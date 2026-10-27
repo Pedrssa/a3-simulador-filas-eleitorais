@@ -9,6 +9,20 @@ estratégias contra **starvation**. Trabalho da avaliação A3 de Programação 
 > **Simulação acadêmica sem vínculo oficial com a Justiça Eleitoral.** Personagens e dados fictícios.
 > Nenhum CPF, título, biometria ou voto é coletado; nenhuma escolha de voto é modelada ou registrada.
 
+
+## Demonstração
+
+![Demonstração animada do SEÇÃO 8-BIT: fila eleitoral, atendimento na urna, incidentes e código real instrumentado](docs/media/demo-secao8bit.gif)
+
+**A cena e o código, lado a lado:** chegada de eleitores, prioridades, atendimento,
+incidentes e acompanhamento das filas.
+
+Reprodução visual em tempo acelerado do motor Python com o **mesmo Canvas do aplicativo**,
+cenário `demo_7min`, seed `2026`. O painel exibe trechos reais dos pontos instrumentados;
+a composição da prévia não é uma captura da interface Streamlit. Dados fictícios, sem áudio.
+O GIF é uma prévia animada; para interagir, siga as instruções de execução abaixo.
+
+
 ## Requisitos
 
 - Python 3.12 ou mais recente (desenvolvido e testado com 3.14.3 no Windows 11)
