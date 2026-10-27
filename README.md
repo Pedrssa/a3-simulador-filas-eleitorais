@@ -77,8 +77,8 @@ docs/                       relatório, regras, UML, dicionário, requisitos, te
 
 ## Versionamento
 
-O repositório git já está inicializado (branch `main`), **sem nenhum commit**. O enunciado pede um histórico
-distribuído entre os integrantes. Por isso, cada pessoa deve commitar a área que estudou e consegue explicar
+O repositório está publicado no GitHub, na branch `main`, com histórico de commits.
+O enunciado pede contribuições reais distribuídas entre os integrantes. Por isso, cada pessoa deve commitar a área que estudou e consegue explicar
 na arguição (a divisão sugerida está em `docs/roteiro_apresentacao.md`). Exemplo:
 
 ```bash
@@ -90,3 +90,4 @@ git push origin main
 ```
 
 `.venv/`, `dados/` (banco local) e `exports/` ficam fora do controle de versão (`.gitignore`).
+

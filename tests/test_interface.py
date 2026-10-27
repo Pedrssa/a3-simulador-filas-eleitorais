@@ -64,3 +64,40 @@ def test_reiniciar_cria_nova_execucao(app):
     _botao(app, "⟲").click().run()
     assert not app.exception
     assert app.session_state["sessao"].motor.execucao_id != antigo
+
+
+
+def test_troca_politica_sincroniza_sessao_e_preserva_apos_reiniciar(app):
+    next(s for s in app.selectbox if s.label == "Política").select("aging").run()
+    _botao(app, "Trocar política agora").click().run()
+    assert not app.exception
+    s = app.session_state["sessao"]
+    assert s.config == s.motor.config
+    assert s.config.politica == "aging"
+    assert s.config.politica_params == {"intervalo_min": 15.0}
+    assert len(app.toast) == 1
+    app.run()
+    assert not any(b.label.startswith("Trocar política agora") for b in app.button)
+    s.reiniciar()
+    assert s.motor.politica.experimental and s.config.politica == "aging"
+
+
+def test_troca_com_falha_nao_exibe_sucesso_nem_altera_config(app, monkeypatch):
+    from secao8bit.application.auditoria import ErroPersistencia
+    next(s for s in app.selectbox if s.label == "Política").select("aging").run()
+    s = app.session_state["sessao"]
+    antes = s.config
+    total = s.repo.total_eventos(s.motor.execucao_id)
+
+    def falhar(*args):
+        raise ErroPersistencia("disco cheio (simulado)")
+
+    monkeypatch.setattr(s.repo, "gravar_lote", falhar)
+    _botao(app, "Trocar política agora").click().run()
+    assert not app.exception
+    assert not app.toast
+    assert app.error
+    assert s.erro and not s.rodando
+    assert s.config == s.motor.config == antes
+    assert not s.motor.politica.experimental
+    assert s.repo.total_eventos(s.motor.execucao_id) == total

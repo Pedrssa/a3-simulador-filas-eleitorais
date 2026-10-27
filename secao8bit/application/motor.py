@@ -35,7 +35,7 @@ from secao8bit.application.config import ConfiguracaoSimulacao
 from secao8bit.application.eventos import AgendaEventos, EventoSimulacao, RelogioSimulado, TipoEvento
 from secao8bit.application.rastreamento import Rastreador
 from secao8bit.domain.eleitor import Eleitor, EstadoEleitor, Ocorrencias
-from secao8bit.domain.fila import FilaPrioridade
+from secao8bit.domain.fila import EntradaFila, FilaPrioridade
 from secao8bit.domain.politicas import PoliticaAtendimento, criar_politica
 from secao8bit.domain.prioridade import Classificacao, ClassePrioridade, PerfilPrioridade
 from secao8bit.domain.recursos import Cargo
@@ -151,6 +151,25 @@ class MotorSimulacao:
     @property
     def concluida(self) -> bool:
         return len(self.estado.agenda) == 0
+
+    def prever_atendimento(self) -> list[EntradaFila]:
+        """Ordem projetada no instante atual, sem novas chegadas nem avanço de tempo.
+
+        Trabalha sobre cópias: cotas podem evoluir durante a projeção, mas não
+        consomem a cota real. Aging é atualizado só na cópia da heap.
+        """
+        fila = copy.deepcopy(self.secao.fila)
+        politica = copy.deepcopy(self.politica)
+        if self.estado.encerrado:
+            return fila.ordem_efetiva()
+        if politica.depende_do_tempo:
+            fila.reconstruir(lambda eid: politica.chave(self.secao.eleitores[eid], self.agora))
+        ordem = []
+        while len(fila):
+            entrada = politica.selecionar(fila, self.secao.eleitores, self.agora).entrada
+            ordem.append(entrada)
+            politica.ao_atender(self.secao.eleitores[entrada.eleitor_id], fila, self.secao.eleitores)
+        return ordem
 
     # ------------------------------------------------------------- transações
     def _transacao(self, acao):
@@ -278,6 +297,7 @@ class MotorSimulacao:
         self._transacao(acao)
 
     def trocar_politica(self, nome: str, **params) -> None:
+        nova_config = self.config.com(politica=nome, politica_params=dict(params))
         def acao() -> None:
             antiga = self.politica
             nova = criar_politica(nome, **params)
@@ -288,6 +308,7 @@ class MotorSimulacao:
             self._auditar("POLITICA_ALTERADA", f"Política alterada de '{antiga.nome}' para '{nova.nome}'.",
                           anterior=antiga.versao, posterior=nova.versao, parametros=nova.parametros())
         self._transacao(acao)
+        self.config = nova_config  # publicar somente após confirmar a auditoria
 
     # ------------------------------------------------------ processamento
     def _processar_proximo(self) -> EventoSimulacao:
@@ -899,3 +920,4 @@ class MotorSimulacao:
         self._auditar("ENCERRAMENTO", "17h: termina o recebimento; quem está na fila recebe senha "
                       "começando pelo último (art. 160, §§ 2º–3º).", som="alerta",
                       senhas=[[eid, s] for eid, s in sorted(senhas.items(), key=lambda kv: -kv[1])])
+

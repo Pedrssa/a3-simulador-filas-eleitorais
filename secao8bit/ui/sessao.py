@@ -37,14 +37,21 @@ class SessaoSimulacao:
     resultados: dict = field(default_factory=dict)  # resultados de botões, persistem entre ticks
 
     @classmethod
-    def nova(cls, config: ConfiguracaoSimulacao, caminho_banco: Path | str = BANCO) -> "SessaoSimulacao":
-        repo = RepositorioAuditoria(caminho_banco)
+    def nova(cls, config: ConfiguracaoSimulacao, caminho_banco: Path | str | None = None) -> "SessaoSimulacao":
+        repo = RepositorioAuditoria(BANCO if caminho_banco is None else caminho_banco)
         return cls(config=config, repo=repo, motor=MotorSimulacao(config, repo))
 
     def reiniciar(self, config: ConfiguracaoSimulacao | None = None) -> None:
         self.config = config or self.config
         self.motor = MotorSimulacao(self.config, self.repo)
         self.rodando, self.ultimo_tick, self.selecionado, self.erro = False, None, None, None
+
+    def trocar_politica(self, nome: str, **params) -> bool:
+        def acao():
+            self.motor.trocar_politica(nome, **params)
+            self.config = self.motor.config
+            return True
+        return self.executar(acao) is True
 
     def iniciar(self) -> None:
         self.rodando, self.ultimo_tick = True, time.monotonic()
@@ -85,3 +92,4 @@ def obter_sessao(st) -> SessaoSimulacao:
     if "sessao" not in st.session_state:
         st.session_state["sessao"] = SessaoSimulacao.nova(config_do_cenario("demo_7min"))
     return st.session_state["sessao"]
+

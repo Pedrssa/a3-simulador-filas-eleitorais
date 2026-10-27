@@ -75,8 +75,8 @@ with st.sidebar:
         st.rerun()
     if politica != s.config.politica or params != s.config.politica_params:
         if st.button("Trocar política agora (sem reiniciar)", width="stretch"):
-            s.executar(lambda: s.motor.trocar_politica(politica, **params))
-            st.toast("Mudança registrada na auditoria (POLITICA_ALTERADA).")
+            if s.trocar_politica(politica, **params):
+                st.toast("Mudança registrada na auditoria (POLITICA_ALTERADA).")
 
     st.subheader("Interações")
     with st.form("inserir", border=False):
@@ -159,3 +159,4 @@ def painel() -> None:
 
 
 painel()
+

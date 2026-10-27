@@ -64,7 +64,7 @@ def _balao(e: Eleitor, motor) -> str:
 
 def montar_cena(motor, selecionado: str | None = None) -> dict:
     secao, agora = motor.secao, motor.agora
-    ordem = [x.eleitor_id for x in secao.fila.ordem_efetiva()]
+    ordem = [x.eleitor_id for x in motor.prever_atendimento()]
     pos_fila = {eid: i for i, eid in enumerate(ordem)}
     pos_comp = {eid: i for i, eid in enumerate(secao.aguardando_comprovante)}
     pessoas: list[dict] = []
@@ -315,3 +315,4 @@ def _acao_apoio(p) -> str:
             return "conduzindo"
         return "abordando" if p.zona.endswith("externo") else "verificando"
     return "parado"
+

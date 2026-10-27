@@ -46,3 +46,23 @@ ocorre em uso normal.
 - Som: o código WebAudio exige um clique dentro do iframe ("Ativar som"). Não foi verificado auditivamente.
 - `sqlite3` de linha de comando não está instalado nesta máquina. A importação de `logs.sql` foi validada
   pelo módulo `sqlite3` do Python (`validar_importacao`), que usa a mesma biblioteca SQLite.
+
+
+## Regressões da revisão de filas e troca de política
+
+Ambiente da revisão: Linux, Python 3.12, Streamlit 1.66.1 e pytest 9.1.1.
+Os testes adicionais verificam:
+- projeção da fila e próximo anunciado para eleitoral, aging e cotas;
+- presença de caso em que a cota chama alguém diferente do topo da heap;
+- leitura da cena sem alterar chaves físicas, cotas, auditoria ou rastreamento;
+- atualização do aging na projeção;
+- troca de política pela interface com sincronização da configuração e reinício;
+- falha de persistência na troca sem toast de sucesso, sem registro parcial e
+  com preservação da política/configuração anterior.
+
+A projeção considera o instante atual, sem novas chegadas nem avanço de tempo.
+Não é uma promessa da ordem futura sob eventos que ainda não ocorreram.
+A revisão não incluiu nova validação visual em navegador.
+
+Resultado da suíte completa nesta revisão: **115 passed in 33.64s**.
+Verificação de whitespace: `git diff --check` sem erros.

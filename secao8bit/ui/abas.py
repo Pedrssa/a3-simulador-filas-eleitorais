@@ -88,11 +88,15 @@ def _detalhes_selecionado(s: SessaoSimulacao) -> None:
 def _justificar_posicao(m, e) -> str:
     if e.estado != EstadoEleitor.AGUARDANDO:
         return "Já saiu da fila de prioridade; o registro SAIDA_FILA na auditoria traz a justificativa da chamada."
-    ordem = m.secao.fila.ordem_efetiva()
+    ordem = m.prever_atendimento()
     pos = next(i for i, x in enumerate(ordem) if x.eleitor_id == e.id)
     minha = ordem[pos].chave
     if m.estado.encerrado:
         return f"Recebeu a senha {e.senha}; a chamada segue a ordem decrescente das senhas (art. 160, § 3º)."
+    if m.politica.experimental:
+        return (f"Posição projetada **{pos + 1}º** de {len(ordem)} pela política "
+                f"**{m.politica.nome}**, considerando cotas e aging no instante atual. "
+                "Novas chegadas e o avanço do tempo podem alterar esta projeção.")
     melhores = sum(1 for x in ordem[:pos] if x.chave[0] < minha[0])
     mesmas = pos - melhores
     return (f"Está em **{pos + 1}º** de {len(ordem)} com chave {tuple(round(v, 1) if isinstance(v, float) else v for v in minha)}. "
@@ -101,7 +105,7 @@ def _justificar_posicao(m, e) -> str:
 
 
 def _tabela_posicoes(m) -> pd.DataFrame:
-    ordem = {x.eleitor_id: i + 1 for i, x in enumerate(m.secao.fila.ordem_efetiva())}
+    ordem = {x.eleitor_id: i + 1 for i, x in enumerate(m.prever_atendimento())}
     linhas = []
     for e in m.secao.eleitores.values():
         if e.finalizado:
@@ -196,12 +200,14 @@ def aba_filas(s: SessaoSimulacao) -> None:
              "classe": eleitores[x.eleitor_id].classe.rotulo, "chave": str(_fmt_chave(x.chave))}
             for i, x in enumerate(fila.array_interno())]), hide_index=True, width="stretch", height=320)
     with c2:
-        st.markdown("**Ordem efetiva de atendimento** (cópia ordenada, O(n log n))")
+        st.markdown("**Projeção de atendimento** (política ativa no instante atual)")
         st.dataframe(pd.DataFrame([
             {"posição": i + 1, "eleitor": x.eleitor_id, "classe": eleitores[x.eleitor_id].classe.rotulo,
              "chegada": m.hora(eleitores[x.eleitor_id].chegada)[:8],
              "espera (min)": round(eleitores[x.eleitor_id].espera(m.agora), 1), "chave": str(_fmt_chave(x.chave))}
-            for i, x in enumerate(fila.ordem_efetiva())]), hide_index=True, width="stretch", height=320)
+            for i, x in enumerate(m.prever_atendimento())]), hide_index=True, width="stretch", height=320)
+    st.caption("Projeção sem novas chegadas e sem avanço de tempo; considera o estado das cotas. "
+               "A heap física ao lado permanece inalterada. Cotas podem exigir O(n²) para projetar toda a fila.")
     if len(fila):
         st.markdown("**Árvore da heap** (até 31 nós)")
         st.graphviz_chart(_dot_heap(fila, eleitores))
@@ -384,4 +390,5 @@ def aba_regras() -> None:
         st.markdown(caminho.read_text(encoding="utf-8"))
     else:
         st.warning(f"Arquivo {caminho.name} não encontrado em docs/.")
+
 

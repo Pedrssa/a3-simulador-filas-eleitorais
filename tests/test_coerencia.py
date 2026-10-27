@@ -61,3 +61,47 @@ def test_encaminhado_sai_pela_porta_na_cena():
         for p in montar_cena(m)["pessoas"]:
             if p["tipo"] == "eleitor" and p["estado"] == EstadoEleitor.ENCAMINHADO.value:
                 assert p["zona"] == "saida" and p["balao"]
+
+
+
+@pytest.mark.parametrize("politica", ["eleitoral", "aging", "cotas"])
+def test_previsao_e_cena_respeitam_politica_sem_mutar_motor(politica):
+    import copy
+    m = MotorSimulacao(config_do_cenario("starvation", politica=politica))
+    viu_excecao_cota = False
+    while not m.concluida:
+        m.passo()
+        antes = (m.secao.fila.array_interno(), dict(m.politica.parametros()),
+                 m.estado.seq_auditoria, len(m.log), m.rastreador.total)
+        ordem = m.prever_atendimento()
+        cena = montar_cena(m)
+        assert antes == (m.secao.fila.array_interno(), dict(m.politica.parametros()),
+                         m.estado.seq_auditoria, len(m.log), m.rastreador.total)
+        if not ordem:
+            assert cena["proximo"] is None
+            continue
+        fila = copy.deepcopy(m.secao.fila)
+        pol = copy.deepcopy(m.politica)
+        if pol.depende_do_tempo:
+            fila.reconstruir(lambda eid: pol.chave(m.secao.eleitores[eid], m.agora))
+        esperado = pol.selecionar(fila, m.secao.eleitores, m.agora).entrada.eleitor_id
+        assert cena["proximo"]["id"] == ordem[0].eleitor_id == esperado
+        visuais = sorted((p["posicao"], p["id"]) for p in cena["pessoas"]
+                         if p["tipo"] == "eleitor" and p["posicao"] is not None)
+        assert [pid for _, pid in visuais] == [e.eleitor_id for e in ordem]
+        if politica == "cotas" and esperado != m.secao.fila.espiar().eleitor_id:
+            viu_excecao_cota = True
+    if politica == "cotas":
+        assert viu_excecao_cota
+
+
+def test_previsao_atualiza_aging_sem_alterar_chaves_fisicas():
+    m = MotorSimulacao(config_do_cenario("starvation", politica="aging"))
+    m.avancar_ate(40)
+    m.estado.relogio.avancar_para(100)
+    antes = m.secao.fila.array_interno()
+    previstos = m.prever_atendimento()
+    assert previstos
+    assert all(e.chave == m.politica.chave(m.secao.eleitores[e.eleitor_id], m.agora)
+               for e in previstos)
+    assert m.secao.fila.array_interno() == antes

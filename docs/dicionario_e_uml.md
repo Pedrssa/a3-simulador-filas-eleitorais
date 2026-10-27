@@ -308,3 +308,18 @@ classDiagram
 | Conjunto | `FilaPrioridade._ids` | `in` em O(1) e detecção de duplicados |
 | Lista FIFO | `aguardando_comprovante` | Pós-voto, sem prioridade |
 | Lista encadeada por hash | `evento_auditoria.hash_anterior` | Detecção de adulteração |
+
+
+
+### Projeção e troca de política
+
+- `MotorSimulacao.prever_atendimento() -> list[EntradaFila]`: projeta a ordem
+  no instante atual sobre cópias da heap e da política. Considera cotas e
+  recalcula aging, sem alterar o motor, logs ou rastreamento. A projeção não
+  antecipa chegadas nem envelhecimento futuro; pode mudar com o tempo.
+  Custo O(n log n) nas políticas eleitoral/aging e O(n²) no pior caso de cotas.
+- `MotorSimulacao.trocar_politica(nome, **params)`: sincroniza a configuração
+  somente depois de a transação de auditoria ter sucesso.
+- `SessaoSimulacao.trocar_politica(nome, **params) -> bool`: sincroniza a
+  configuração da sessão e informa sucesso à interface. Em falha, pausa e
+  mantém a configuração anterior; não exibe confirmação de gravação.
