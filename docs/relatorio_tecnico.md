@@ -1,6 +1,6 @@
 # Relatório técnico: SEÇÃO 8-BIT
 
-*Avaliação A3: Algoritmos, Modelagem OO, Auditoria e Aplicação em Casos Reais. Simulação acadêmica sem vínculo
+*A3 — Programação de Soluções Computacionais (enunciado: "Algoritmos, Modelagem OO, Auditoria e Aplicação em Casos Reais"). Simulação acadêmica sem vínculo
 oficial com a Justiça Eleitoral.*
 
 ## 1. Problema

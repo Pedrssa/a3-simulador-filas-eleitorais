@@ -1,8 +1,10 @@
-# SEÇÃO 8-BIT — Simulador de Filas Eleitorais
+# A3 — Programação de Soluções Computacionais
+
+## SEÇÃO 8-BIT — Simulador de Filas Eleitorais
 
 Simulador acadêmico de **filas de prioridade** ambientado numa seção eleitoral brasileira, com animação
 pixel art, exibição do código efetivamente executado, eventos aleatórios, auditoria SQL e comparação de
-estratégias contra **starvation**. Trabalho da avaliação A3 de Algoritmos e Programação Orientada a Objetos.
+estratégias contra **starvation**. Trabalho da avaliação A3 de Programação de Soluções Computacionais.
 
 > **Simulação acadêmica sem vínculo oficial com a Justiça Eleitoral.** Personagens e dados fictícios.
 > Nenhum CPF, título, biometria ou voto é coletado; nenhuma escolha de voto é modelada ou registrada.
@@ -83,8 +85,8 @@ na arguição (a divisão sugerida está em `docs/roteiro_apresentacao.md`). Exe
 git add secao8bit/domain/prioridade.py tests/test_prioridade.py docs/regras_eleitorais.md
 git commit -m "Classificação de prioridade conforme art. 129 da Res. 23.751/2026"
 
-git remote add origin https://github.com/<usuario>/secao-8bit.git
-git push -u origin main
+git pull origin main   # o repositório já está no GitHub
+git push origin main
 ```
 
 `.venv/`, `dados/` (banco local) e `exports/` ficam fora do controle de versão (`.gitignore`).
