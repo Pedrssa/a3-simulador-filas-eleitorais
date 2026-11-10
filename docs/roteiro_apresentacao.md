@@ -1,7 +1,7 @@
 # Roteiro da apresentação (20 minutos)
 
 Preparação: `streamlit run app.py`, navegador em tela cheia, cenário **demo_7min**, seed **2026**, política
-**Regras eleitorais**, velocidade **2**. Deixe uma segunda aba aberta com o cenário **starvation** já carregado,
+**Regras eleitorais**, velocidade **120×**. Deixe uma segunda aba aberta com o cenário **starvation** já carregado,
 se a rede da sala permitir.
 
 ## 1. Pitch do problema (3 min)

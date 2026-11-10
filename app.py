@@ -14,7 +14,7 @@ from secao8bit.application.config import CENARIOS, config_do_cenario
 from secao8bit.application.motor import TIPOS_INCIDENTE
 from secao8bit.domain.politicas import POLITICAS_DISPONIVEIS
 from secao8bit.ui import abas
-from secao8bit.ui.sessao import TICK_S, obter_sessao
+from secao8bit.ui.sessao import TICK_S, VELOCIDADES, obter_sessao
 
 st.set_page_config(page_title="SEÇÃO 8-BIT — Simulador de Filas Eleitorais", page_icon="🗳️", layout="wide",
                    initial_sidebar_state="expanded")
@@ -46,8 +46,10 @@ with st.sidebar:
         st.rerun()
     if c2.button("⏭ Avançar 1 evento", width="stretch", disabled=m.concluida):
         s.avancar_um()
-    s.velocidade = st.select_slider("Velocidade (min simulados por segundo)", [0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 15.0],
-                                    value=s.velocidade)
+    s.velocidade = st.select_slider(
+        "Velocidade (× tempo real)", VELOCIDADES, value=s.velocidade if s.velocidade in VELOCIDADES else 0.25,
+        format_func=lambda v: f"{v * 60:g}×",
+        help="Quantas vezes mais rápido que o relógio real. 60× = 1 minuto simulado por segundo.")
 
     st.subheader("Cenário")
     cenario = st.selectbox("Cenário", list(CENARIOS), index=list(CENARIOS).index(s.config.cenario),
