@@ -14,6 +14,8 @@ _PASTA = Path(__file__).resolve().parents[2] / "assets" / "cena8bit"
 _cena8bit = components.declare_component("cena8bit", path=str(_PASTA))
 
 
-def cena_8bit(cena: dict, *, som: bool, reduzido: bool, transicao_ms: int, key: str = "cena") -> str | None:
-    """Desenha a cena e devolve o ID clicado (ou None)."""
-    return _cena8bit(cena=cena, som=som, reduzido=reduzido, transicao_ms=transicao_ms, key=key, default=None)
+def cena_8bit(cena: dict, *, som: bool, reduzido: bool, transicao_ms: int, dialogos: bool = False,
+              key: str = "cena") -> str | None:
+    """Desenha a cena e devolve o ID clicado (ou None). `dialogos` liga as conversas ilustrativas."""
+    return _cena8bit(cena=cena, som=som, reduzido=reduzido, transicao_ms=transicao_ms, dialogos=dialogos,
+                     key=key, default=None)

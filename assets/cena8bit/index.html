@@ -10,6 +10,11 @@
   canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; cursor: pointer;
            border: 2px solid #0a0a12; outline: none; }
   canvas:focus-visible { border-color: #ffd34d; }
+  #legenda { width: 100%; max-width: var(--largura, 960px); display: flex; flex-wrap: wrap; gap: 6px 14px;
+             font-size: 13px; color: #d9d5e8; align-items: center; }
+  #legenda .tag { display: inline-block; color: #14100a; font: 700 12px/1 Consolas, monospace; padding: 3px 5px;
+                  border: 1px solid #14100a; border-radius: 2px; margin-right: 4px; }
+  #legenda .figuras { color: #b9b5cc; flex-basis: 100%; }
   #painel { width: 100%; max-width: var(--largura, 960px); display: grid; gap: 8px; }
   #estacoes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
   .est { background: #20202f; border: 1px solid #36364d; border-radius: 6px; padding: 6px 8px; min-width: 0; }
@@ -37,6 +42,16 @@
 <div id="wrap">
   <canvas id="tela" tabindex="0" role="img"
           aria-label="Animação da seção eleitoral simulada. As mesmas informações aparecem no painel abaixo e nas tabelas."></canvas>
+  <div id="legenda" aria-label="Legenda da cena">
+    <span><b class="tag" style="background:#ffd34d">▼ PRÓXIMO</b> será chamado agora</span>
+    <span><b class="tag" style="background:#ffd34d">80+</b> mais de 80 anos (passa à frente de todos)</span>
+    <span><b class="tag" style="background:#8fd3ff">P</b> preferência legal</span>
+    <span><b class="tag" style="background:#ffb3c1">D</b> doador(a) de sangue</span>
+    <span><b class="tag" style="background:#e8e8e8">3</b> posição na fila</span>
+    <span><b class="tag" style="background:#c62828;color:#fff">!</b> esperando demais</span>
+    <span><b class="tag" style="background:#e8e8e8">A</b> acompanhante</span>
+    <span class="figuras">Figuras: cabelo branco e bengala = idoso(a) · cadeira de rodas · barriga = gestante · bebê no colo · cordão de girassol = deficiência não visível</span>
+  </div>
   <div id="painel">
     <div id="estacoes" aria-label="Estações de atendimento"></div>
     <div id="narracao" aria-live="polite">
