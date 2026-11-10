@@ -48,30 +48,34 @@ python scripts/gerar_exemplos.py        # regenera sql/logs.sql e imprime a comp
 
 O banco de auditoria da interface fica em `dados/auditoria.sqlite3` (criado automaticamente).
 
-## Como usar (roteiro curto)
+## Como usar
 
-1. Na barra lateral, escolha o **cenário** (`demo_7min` é o roteiro da apresentação), a **seed** e a **política**, e clique em **Reiniciar com estas opções**.
-2. Use **▶ Iniciar / ⏸ Pausar**, **⏭ Avançar 1 evento** e o controle de **velocidade**. A velocidade muda só o ritmo da tela: para a mesma seed e configuração, os resultados são os mesmos.
-3. Insira eleitores, gere chegadas ou dispare incidentes em **Interações**.
-4. Ative o **Modo apresentação** para ver a cena e o último passo do algoritmo lado a lado.
+A interface segue uma sequência didática em quatro visões (botões no topo):
 
-| Aba | Conteúdo |
+| Visão | Para quê |
 |---|---|
-| A. Simulação 8 bits | cena animada, detalhes da pessoa selecionada, tabela acessível de quem está onde |
-| B. Código em execução | evento → método → linha real → antes/depois → efeito na cena |
-| C. Filas e algoritmo | array interno da heap, ordem efetiva, árvore, agenda de eventos, complexidades |
-| D. Métricas e SLA | esperas por grupo (incluindo quem ainda espera), SLA, starvation, comparação de políticas |
-| E. Auditoria SQL | consulta parametrizada, verificação do hash, exportação e validação de `logs.sql` |
-| F. Regras e documentação | matriz de regras eleitorais e documentos do projeto |
+| **1 · Entenda a fila** | Fila comum (FIFO) × fila de prioridade com três pessoas, e um laboratório que roda a classe `FilaPrioridade` real: adicione pessoas, chame a próxima e veja o array da heap, a árvore e as posições que mudaram. |
+| **2 · Ao vivo** | A seção eleitoral animada. Cartões em linguagem natural dizem quem foi chamado e por quê (ex.: "chegou depois de X, mas tem mais de 80 anos…") e quem é o próximo. Lista de quem espera, legenda permanente e selo **▼ PRÓXIMO** na cena. |
+| **3 · Algoritmo** | Chave e política, heap física × ordem de atendimento, agenda de eventos (a outra heap), código em execução com a linha real, complexidades. |
+| **4 · Resultados** | Métricas e SLA, starvation e comparação de políticas com a mesma carga, auditoria SQL (hash, exportação, validação) e documentos. Separa regra eleitoral real, hipótese acadêmica e laboratório. |
+
+Controles principais (visões 2 e 3): **▶ Iniciar / ⏸ Pausar**, **⏭ Próxima chamada** (avança até a próxima
+pessoa sair da fila e para), **⏭ 1 evento** e **⟳ Recomeçar demo** (`demo_7min`, seed 2026, regras eleitorais).
+A barra lateral guarda a velocidade e, recolhidos, *Cenário e política*, *Provocar situações* e *Exibição*.
+O **Modo apresentação** (topo, à direita) esconde a barra lateral e põe cena e explicação lado a lado para projetor.
+A velocidade muda só o ritmo da tela: para a mesma seed e configuração, os resultados são os mesmos.
+
+Roteiro completo da banca, com os cliques medidos em ensaio: [docs/roteiro_apresentacao.md](docs/roteiro_apresentacao.md).
 
 ## Estrutura
 
 ```
 app.py                      ponto de entrada Streamlit (fino)
 secao8bit/domain/           Eleitor, PerfilPrioridade, FilaPrioridade (heap), políticas, recursos, seção
-secao8bit/application/      MotorSimulacao, carga reproduzível, agenda/relógio, métricas, rastreamento, cena
+secao8bit/application/      MotorSimulacao, carga reproduzível, agenda/relógio, métricas, rastreamento, cena,
+                            explicações em linguagem natural (explicacao.py), laboratório FIFO × heap (didatica.py)
 secao8bit/infrastructure/   RepositorioAuditoria (SQLite), exportador de logs.sql
-secao8bit/ui/               sessão compartilhada, abas, componente da cena
+secao8bit/ui/               sessão compartilhada, visões (visoes.py), conteúdo reutilizado (abas.py), componente da cena
 assets/cena8bit/            Canvas + JavaScript (só apresentação)
 sql/schema.sql, sql/logs.sql
 tests/                      pytest (domínio, motor, auditoria, coerência, interface)
