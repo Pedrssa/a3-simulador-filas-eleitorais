@@ -198,14 +198,21 @@
   }
 
   // ------------------------------------------------------------ utilidades
+  // O texto usa "meio pixel" da cena (fonte 5x7 em escala/2). Por isso o canvas interno é sempre
+  // 2x ou 4x a cena: com escala 1 as placas transbordavam e com escala 3 o texto ficava a 1/3.
+  // O tamanho exibido (CSS) acompanha a largura disponível, independente da resolução interna.
   function redimensionar() {
-    const larg = Math.max(W, document.body.clientWidth - 8);
-    const nova = Math.max(1, Math.min(4, Math.floor(larg / W)));
+    const larg = Math.max(200, document.body.clientWidth - 8);
+    const vis = larg >= 2 * W ? Math.min(4, Math.floor(larg / W)) : Math.min(2, larg / W);
+    const dispositivo = vis * (window.devicePixelRatio || 1);
+    canvas.style.width = Math.round(W * vis) + "px"; canvas.style.height = Math.round(H * vis) + "px";
+    document.documentElement.style.setProperty("--largura", Math.round(W * vis) + "px");
+    const nova = dispositivo > 2.5 ? 4 : 2;
+    // ampliar: pixels nítidos; reduzir: suavizado, senão linhas da fonte somem
+    canvas.style.imageRendering = dispositivo + 1e-6 >= nova ? "pixelated" : "auto";
     if (nova === escala && fundo) return;
     escala = nova;
     canvas.width = W * escala; canvas.height = H * escala;
-    canvas.style.width = W * escala + "px"; canvas.style.height = H * escala + "px";
-    document.documentElement.style.setProperty("--largura", W * escala + "px");
     fundo = null;
   }
   window.addEventListener("resize", () => { redimensionar(); ajustarAltura(); });
@@ -215,12 +222,15 @@
     c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = cor;
     c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); c.restore();
   }
-  function pxFonte(tam) { return tam === "g" ? escala : Math.max(1, Math.floor(escala / 2)); }
+  function pxFonte(tam) { return tam === "g" ? escala : escala / 2; }
   function medirCaixa(s, tam) {
     const px = pxFonte(tam || "p");
     return { w: (F.largura(s) * px + px * 4) / escala + 2 * px / escala, h: ((F.ALTURA - 1) * px + px * 2) / escala + 2 * px / escala };
   }
   let ocupados = []; // retângulos de balões já desenhados neste quadro
+  function colide(x, y, w, h) {
+    return ocupados.some((b) => x - w / 2 < b.x + b.w / 2 && x + w / 2 > b.x - b.w / 2 && y < b.y + b.h && y + h > b.y);
+  }
   function posicaoLivre(x, y, w, h) {
     let yy = y;
     for (let tent = 0; tent < 6; tent++) {
@@ -367,7 +377,7 @@
     // nomes dos ambientes
     caixa(c, "RUA", 66, 216, { centro: true, fundo: "#ffffff" });
     caixa(c, "CORREDOR", 161, 44, { centro: true, fundo: "#efe6cf", cor: "#5b4030" });
-    caixa(c, "SALA DA SEÇÃO", 318, 44, { centro: true, fundo: "#f3ead2", cor: "#5b4030" });
+    caixa(c, "SALA DA SEÇÃO", 272, 44, { centro: true, fundo: "#f3ead2", cor: "#5b4030" });
     // placa sobre a porta da seção (depois das paredes, para não ser coberta)
     r(c, 224, 100, 30, 9, "#234d34");
     caixa(c, "SEÇÃO 42", 239, 101, { centro: true, cor: "#e8f0e0" });
@@ -497,7 +507,57 @@
     if (p.tipo === "policial") Object.assign(v, { roupa: "#1e2b48", calca: "#1e2b48", estilo: "quepe", bone: "#121a2e", saia: false, sapato: "#111" });
     if (p.tipo === "tecnico") Object.assign(v, { roupa: "#3a3a3a", colete: "#ff8c1a", faixa: "#e8e8e8", estilo: "bone", bone: "#ff8c1a", saia: false });
     if (p.tipo === "apoio") Object.assign(v, { colete: "#ffd34d", faixa: "#ffffff" });
+    const pf = p.perfil || {};
+    if (pf.idade) { // grisalho aos 60+, branco aos 80+, óculos; nada de boné
+      v.cabelo = pf.idade === "80+" ? "#f1f1ee" : "#a9a9a4";
+      if (v.estilo === "bone" || v.estilo === "crespo" || v.estilo === "longo") v.estilo = i % 2 ? "coque" : "curto";
+      v.oculos = true; v.idoso = pf.idade;
+    }
+    if (pf.gestante) Object.assign(v, { gestante: true, saia: true, estilo: v.estilo === "raspado" || v.estilo === "bone" ? "longo" : v.estilo });
+    v.cadeira = pf.apoio === "cadeira";
+    v.bengala = pf.apoio === "bengala";
+    v.colo = !!pf.colo;
+    v.girassol = !!pf.girassol;
+    v.largo = pf.porte === "largo";
     return v;
+  }
+
+  const BEBE = { manta: "#f6e6a8", sombra: "#d9c27a", pele: "#f1c9a0" };
+  /** Roda de perfil com raios que giram enquanto a cadeira anda. */
+  function roda(c, cx, cy, raio, giro) {
+    for (let a = 0; a < 32; a++) {
+      const t = a / 32 * 2 * Math.PI;
+      r(c, Math.round(cx + Math.cos(t) * raio), Math.round(cy + Math.sin(t) * raio), 1, 1, "#22252b");
+    }
+    for (let k = 0; k < 2; k++) {
+      const t = giro + k * Math.PI / 2;
+      for (let i = -raio + 1; i < raio; i++) r(c, Math.round(cx + Math.cos(t) * i), Math.round(cy + Math.sin(t) * i), 1, 1, "#8d939c");
+    }
+    r(c, cx, cy, 1, 1, "#c9ced6");
+  }
+  /** Pessoa em cadeira de rodas: pés em (x, y). De perfil mostra a roda grande; de frente/costas, as duas rodas. */
+  function cadeirante(c, X, Y, v, o) {
+    const metal = "#7d8590", estofado = "#2a3a5a";
+    const giro = (o.pose === "andando" ? (o.quadro || 0) : 0) * Math.PI / 4;
+    if (o.dir === "l" || o.dir === "r") {
+      const d = o.dir === "l" ? -1 : 1;
+      const px = (dx, yy, w, h, cor) => r(c, d > 0 ? X + dx : X - dx - w + 1, yy, w, h, cor);
+      px(-4, Y - 19, 2, 12, estofado); px(-5, Y - 20, 2, 1, metal);       // encosto e manopla
+      px(-3, Y - 8, 9, 2, estofado);                                      // assento
+      const res = sentadoPerfil(c, X, Y - 1, v, Object.assign({}, o, { dir: d > 0 ? "r" : "l" }));
+      px(6, Y - 2, 3, 1, metal);                                          // apoio dos pés
+      roda(c, X - d, Y - 5, 5, giro);
+      px(6, Y - 1, 2, 1, "#22252b"); px(7, Y, 1, 1, "#22252b");            // rodinha dianteira
+      return { topo: res.topo };
+    }
+    const res = pessoa(c, X, Y, v, Object.assign({}, o, { sentar: true, semCadeira: true }));
+    for (const lado of [-1, 1]) {   // de frente: as duas rodas, uma de cada lado
+      const x0 = X + lado * 7 - (lado < 0 ? 1 : 0);
+      r(c, x0, Y - 11, 2, 11, "#22252b"); r(c, x0 + (lado < 0 ? 1 : 0), Y - 10, 1, 9, metal);
+    }
+    if (o.dir === "b") { r(c, X - 5, Y - 19, 11, 9, estofado); r(c, X - 6, Y - 20, 2, 1, metal); r(c, X + 5, Y - 20, 2, 1, metal); }
+    r(c, X - 3, Y - 1, 7, 1, metal);
+    return res;
   }
 
   /** Personagem 2D: pés em (x, y). dir: f frente, b costas, l/r perfil. */
@@ -513,12 +573,16 @@
     px(-2, Y - 17, 5, 8, v.roupa); px(-2, Y - 10, 5, 1, "#1a1208");
     if (v.colete) { px(-2, Y - 17, 5, 8, v.colete); }
     if (o.papel === "fiscal") { px(1, Y - 16, 1, 3, "#2e9e4f"); px(1, Y - 14, 2, 2, "#bff0c9"); }
+    if (v.gestante) { px(3, Y - 15, 2, 6, v.roupa); px(5, Y - 14, 1, 4, v.roupa); px(4, Y - 14, 1, 2, mistura(v.roupa, "#ffffff", 0.3)); }
+    if (v.girassol) { px(1, Y - 17, 1, 3, "#2e7d32"); px(1, Y - 14, 2, 2, "#ffd200"); }
     // braço apoiado na coxa
     px(0, Y - 16, 2, 5, v.roupa); px(2, Y - 11, 3, 2, v.pele);
+    if (v.colo) { px(2, Y - 16, 5, 4, BEBE.manta); px(2, Y - 13, 5, 1, BEBE.sombra); px(5, Y - 17, 2, 2, BEBE.pele); }
     // pescoço e cabeça de perfil
     px(-1, Y - 18, 3, 1, v.pele);
     px(-2, Y - 25, 5, 7, v.pele);
     px(1, Y - 22, 1, 1, "#1a1208"); px(3, Y - 21, 1, 1, v.pele);
+    if (v.oculos) { px(0, Y - 22, 3, 1, "#3a3a3a"); px(1, Y - 22, 1, 1, "#1a1208"); }
     const cab = v.cabelo;
     if (v.estilo === "bone" || v.estilo === "quepe") { px(-2, Y - 27, 5, 3, v.bone); px(3, Y - 25, 2, 1, v.bone); }
     else if (v.estilo === "crespo") { px(-3, Y - 28, 7, 4, cab); px(-3, Y - 24, 2, 3, cab); }
@@ -530,10 +594,11 @@
   function pessoa(c, x, y, v, o) {
     const X = Math.round(x), Y = Math.round(y);
     const dir = o.dir, pose = o.pose, q = o.quadro || 0;
+    if (v.cadeira && !o.semCadeira) return cadeirante(c, X, Y, v, o);
     if (pose === "sentado" && (dir === "l" || dir === "r")) return sentadoPerfil(c, X, Y, v, o);
-    const sent = pose === "sentado" || pose === "atras_mesa";
+    const sent = pose === "sentado" || pose === "atras_mesa" || !!o.sentar;
     const ag = pose === "agachado";
-    const dy = pose === "atras_mesa" ? 5 : pose === "sentado" ? -3 : ag ? 7 : 0;
+    const dy = pose === "atras_mesa" ? 5 : sent ? -3 : ag ? 7 : 0;
     const escuro = "#1a1208";
     // pernas
     if (pose !== "atras_mesa") {
@@ -561,9 +626,23 @@
     const T = Y - dy; // base do tronco
     // tronco
     const lateral = dir === "l" || dir === "r";
-    const tx = lateral ? X - 2 : X - 3, tw = lateral ? 5 : 7;
+    const tx = lateral ? X - 2 : (v.largo ? X - 4 : X - 3), tw = lateral ? (v.largo ? 7 : 5) : (v.largo ? 9 : 7);
     r(c, tx, T - 17, tw, 7, v.roupa);
     r(c, tx, T - 10, tw, 1, escuro);
+    if (v.gestante) {
+      if (lateral) {
+        const d = dir === "r" ? 1 : -1, bx = d > 0 ? tx + tw : tx - 2;
+        r(c, bx, T - 15, 2, 6, v.roupa); r(c, d > 0 ? bx + 2 : bx - 1, T - 14, 1, 4, v.roupa);
+        r(c, d > 0 ? bx : bx + 1, T - 14, 1, 2, mistura(v.roupa, "#ffffff", 0.3));
+      } else if (dir !== "b") {
+        r(c, tx - 1, T - 14, tw + 2, 5, v.roupa); r(c, X - 2, T - 10, 5, 1, v.roupa);
+        r(c, X - 1, T - 13, 3, 1, mistura(v.roupa, "#ffffff", 0.35)); r(c, X - 2, T - 12, 1, 1, mistura(v.roupa, "#ffffff", 0.2));
+      } else { r(c, tx - 1, T - 14, 1, 4, v.roupa); r(c, tx + tw, T - 14, 1, 4, v.roupa); }
+    }
+    if (v.girassol && dir !== "b") {
+      if (lateral) r(c, X, T - 14, 2, 2, "#ffd200");
+      else { r(c, X - 2, T - 17, 1, 3, "#2e7d32"); r(c, X + 2, T - 17, 1, 3, "#2e7d32"); r(c, X - 1, T - 14, 3, 2, "#ffd200"); r(c, X, T - 14, 1, 1, "#7a4a12"); }
+    }
     if (v.colete) { r(c, tx, T - 17, 2, 7, v.colete); r(c, tx + tw - 2, T - 17, 2, 7, v.colete); if (lateral) r(c, tx, T - 17, tw, 7, v.colete); }
     if (v.faixa) r(c, tx, T - 13, tw, 1, v.faixa);
     if (o.papel === "mesa" && dir !== "b") r(c, X + 1, T - 16, 2, 2, "#ffffff");
@@ -586,7 +665,7 @@
         bracoBaixo(X + balanco * d - (d > 0 ? 0 : 1));
       }
     } else {
-      const esq = X - 4, dir_ = X + 4;
+      const esq = v.largo ? X - 5 : X - 4, dir_ = v.largo ? X + 5 : X + 4;
       if (pose === "discutindo") {
         const alt = q % 2;
         r(c, esq, T - 21 + alt, 1, 5, v.roupa); mao(esq, T - 23 + alt);
@@ -606,6 +685,21 @@
         if (o.item === "caixa") { r(c, X + 4, T - 12, 5, 3, "#c0392b"); r(c, X + 5, T - 13, 3, 1, "#7a1a1a"); }
       }
     }
+    if (v.colo && dir !== "b") {
+      if (lateral) { const d = dir === "r" ? 1 : -1; r(c, d > 0 ? X + 1 : X - 5, T - 16, 5, 4, BEBE.manta); r(c, d > 0 ? X + 4 : X - 5, T - 17, 2, 2, BEBE.pele); }
+      else { r(c, X - 3, T - 15, 6, 4, BEBE.manta); r(c, X - 3, T - 12, 6, 1, BEBE.sombra); r(c, X - 3, T - 17, 3, 3, BEBE.pele); r(c, X - 2, T - 16, 1, 1, "#1a1208"); }
+    }
+    if (v.bengala && !sent && !ag) {
+      const madeira = "#6b4423";
+      if (lateral) {
+        const d = dir === "r" ? 1 : -1, passo = pose === "andando" ? [0, 1, 0, -1][q % 4] : 0;
+        const bx = X + (4 + passo) * d;
+        r(c, bx, T - 13, 1, Y - (T - 13), madeira); r(c, d > 0 ? bx - 1 : bx, T - 13, 2, 1, madeira);
+      } else {
+        const bx = dir === "b" ? X - 5 : X + 5;
+        r(c, bx, T - 12, 1, Y - (T - 12), madeira); r(c, bx - 1, T - 13, 3, 1, madeira);
+      }
+    }
     // pescoço e cabeça
     r(c, X - 1, T - 18, 3, 1, v.pele);
     const hx = lateral ? X - 2 : X - 3, hw = lateral ? 5 : 7, H0 = T - 25;
@@ -617,6 +711,7 @@
       r(c, hx, H0 - 1, hw, 2, v.cabelo); r(c, d > 0 ? hx : hx + hw - 1, H0, 1, v.estilo === "longo" ? 8 : 4, v.cabelo);
     } else {
       r(c, X - 2, H0 + 3, 1, 1, "#1a1208"); r(c, X + 2, H0 + 3, 1, 1, "#1a1208");
+      if (v.oculos) { r(c, X - 3, H0 + 2, 3, 1, "#3a3a3a"); r(c, X + 1, H0 + 2, 3, 1, "#3a3a3a"); r(c, X, H0 + 3, 1, 1, "#3a3a3a"); }
       r(c, X, H0 + 5, 1, 1, o.bravo ? "#7a1a1a" : "#9a4a3a");
       if (o.bravo) { r(c, X - 3, H0 + 2, 2, 1, "#1a1208"); r(c, X + 2, H0 + 2, 2, 1, "#1a1208"); }
     }
@@ -651,6 +746,8 @@
         if (a === "celular" || a === "celular_recusa") return { dir: "b", pose: "braco", item: "celular" };
         if (a === "recebendo") return { dir: "b", pose: "braco", item: "comprovante" };
         if (a === "votando" || p.zona === "cabine" || p.zona === "aguardando_urna") return { dir: "b", pose: "em_pe" };
+        // de perfil a roda da cadeira e a barriga da gestante ficam legíveis
+        if (p.perfil && (p.perfil.apoio === "cadeira" || p.perfil.gestante)) return { dir: "r", pose: "em_pe" };
         return { dir: "f", pose: "em_pe" };
       case "mesa":
         if (p.zona.indexOf("mesa_") === 0) {
@@ -698,6 +795,9 @@
     // vizinhos na fila ou nos assentos alternam a altura da etiqueta para não se sobreporem
     const alterna = (p.zona === "fila" || p.zona === "assento") && p.vaga % 2 === 1 && s.rota.length === 0 ? 9 : 0;
     const y = s.topo - 9 - alterna;
+    const ocupa = (txt, yy) => { const m = medirCaixa(txt); ocupados.push({ x: s.x, y: yy, w: m.w, h: m.h }); };
+    if (p.tipo === "mesa") ocupa(p.rotulo, y);
+    else if (ROTULO_PAPEL[p.tipo]) ocupa(ROTULO_PAPEL[p.tipo], y);
     if (p.tipo === "mesa") return caixa(ctx, p.rotulo, s.x, y, { centro: true, fundo: "#1f5fa8", cor: "#ffffff" });
     if (ROTULO_PAPEL[p.tipo]) return caixa(ctx, ROTULO_PAPEL[p.tipo], s.x, y, { centro: true, fundo: p.tipo === "policial" ? "#1e2b48" : (visual(p).colete || "#6ab04c"), cor: p.tipo === "policial" ? "#ffffff" : "#14100a" });
     if (p.tipo !== "eleitor" || p.zona === "cabine") return;
@@ -706,6 +806,7 @@
     if (!naEspera && !p.icone && !p.selecionado) return;
     let etiqueta = p.icone || "";
     if (p.posicao) etiqueta = `${p.posicao}${etiqueta ? " " + etiqueta : ""}`;
+    if (etiqueta) ocupa(etiqueta, y);
     if (etiqueta) caixa(ctx, etiqueta, s.x, y, { centro: true, fundo: COR_CLASSE[p.classe] || "#e8e8e8" });
     if (p.starvation) caixa(ctx, "!", s.x + 7, s.topo, { fundo: "#ff3b3b", cor: "#ffffff" });
   }
@@ -720,7 +821,8 @@
     }
     if (s.destaque && t < s.destaque.ate) {
       const pisca = s.destaque.forte && Math.floor(t / 250) % 2;
-      return caixa(ctx, s.destaque.texto, s.x, y, { centro: true, rabo: true, fundo: pisca ? "#ffffff" : "#ffd34d" });
+      const m = medirCaixa(s.destaque.texto);
+      return caixa(ctx, s.destaque.texto, s.x, posicaoLivre(s.x, y, m.w, m.h), { centro: true, rabo: true, fundo: pisca ? "#ffffff" : "#ffd34d" });
     }
     if (!p.balao || s.rota.length > 1) return;
     if (p.tipo !== "eleitor" || p.zona === "cabine") return; // mesa, apoio e polícia falam pelos roteiros
@@ -728,7 +830,10 @@
       if (p.balao !== "Posso passar?" && p.balao !== "Esperando muito!") return;
     }
     const alerta = /passar|muito|Vote|Impugno|Ocorr/.test(p.balao);
-    caixa(ctx, p.balao, s.x, y, { centro: true, rabo: true, fundo: alerta ? "#ffe0e0" : "#ffffff" });
+    const m = medirCaixa(p.balao);
+    // na fila, vizinhos com o mesmo aviso não se empilham: quem não cabe fica só com o "!"
+    if ((p.zona === "fila" || p.zona === "assento") && colide(s.x, y, m.w, m.h)) return;
+    caixa(ctx, p.balao, s.x, posicaoLivre(s.x, y, m.w, m.h), { centro: true, rabo: true, fundo: alerta ? "#ffe0e0" : "#ffffff" });
   }
 
   // ------------------------------------------------------------- diálogos
@@ -867,13 +972,14 @@
     camadas.sort((a, b) => a.y - b.y);
     for (const c of camadas) c.f();
     desenharPortao();
-    for (const s of visiveis) desenharRotulo(s);
     ocupados = [];
+    const fora = cena ? cena.fila_total - NA_FILA_CORREDOR - NA_CALCADA - cena.pessoas.filter((p) => p.zona === "assento").length : 0;
+    if (fora > 0) { const m = medirCaixa(`+${fora} AGUARDANDO`); ocupados.push({ x: 40, y: 156, w: m.w, h: m.h }); }
+    for (const s of visiveis) desenharRotulo(s);
     const dialogo = falas(t);
     const ordem = [...visiveis].sort((a, b) => Number((dialogo.get(a.dados.id) || [0, false])[1]) -
                                               Number((dialogo.get(b.dados.id) || [0, false])[1]));
     for (const s of ordem) desenharBalao(s, t, dialogo.get(s.dados.id));
-    const fora = cena ? cena.fila_total - NA_FILA_CORREDOR - NA_CALCADA - cena.pessoas.filter((p) => p.zona === "assento").length : 0;
     if (fora > 0) caixa(ctx, `+${fora} AGUARDANDO`, 40, 156, { centro: true, fundo: "#ffd34d" });
     if (cena && cena.identificacao.estado === "INTERROMPIDO") caixa(ctx, "MESA PAUSADA", 300, 166, { centro: true, fundo: "#ff7a7a" });
     if (cena && cena.urna.estado === "INTERROMPIDO") caixa(ctx, "URNA PARADA", 365, 128, { centro: true, fundo: "#ff7a7a" });

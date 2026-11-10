@@ -8,7 +8,7 @@ o JavaScript converte em pixels e interpola o movimento.
 from __future__ import annotations
 
 from secao8bit.domain.eleitor import Eleitor, EstadoEleitor
-from secao8bit.domain.prioridade import ClassePrioridade
+from secao8bit.domain.prioridade import IDADE_PREFERENCIA, ClassePrioridade, Condicao, idade_em_anos
 from secao8bit.domain.recursos import Cargo, EstadoRecurso
 
 PERMANENCIA_SAIDA_MIN = 1.5
@@ -32,6 +32,35 @@ _TEXTO_RECURSO = {EstadoRecurso.DISPONIVEL: "LIVRE", EstadoRecurso.OCUPADO: "OCU
 def paleta(eid: str) -> int:
     """Aparência sorteada pelo ID (nunca pela condição de prioridade)."""
     return sum(ord(c) * (i + 1) for i, c in enumerate(eid)) % 997
+
+
+def perfil_visual(e: Eleitor, data_eleicao) -> dict:
+    """Traços que a cena desenha para a pessoa ser reconhecível sem depender do rótulo.
+
+    Só aparência: idade (cabelo grisalho/branco, postura), gestação, cadeira de rodas,
+    bengala, criança de colo, cordão de girassol (deficiência oculta/TEA), porte físico.
+    Não interfere na ordem de atendimento.
+    """
+    cond = e.perfil.condicoes
+    idade = idade_em_anos(e.perfil.nascimento, data_eleicao)
+    sorteio = paleta(e.id + "v")
+    apoio = ""
+    if Condicao.DEFICIENCIA in cond or Condicao.MOBILIDADE_REDUZIDA in cond:
+        # parte das pessoas com deficiência/mobilidade reduzida usa cadeira de rodas; as demais, bengala
+        apoio = "cadeira" if (Condicao.DEFICIENCIA in cond or sorteio % 2 == 0) else "bengala"
+        if Condicao.DEFICIENCIA in cond and sorteio % 3 == 0:
+            apoio = "girassol"
+    elif e.classe == ClassePrioridade.MAIS_DE_80:
+        apoio = "bengala"
+    colo = Condicao.CRIANCA_DE_COLO in cond or Condicao.LACTANTE in cond
+    return {
+        "idade": "80+" if e.classe == ClassePrioridade.MAIS_DE_80 else ("60+" if idade >= IDADE_PREFERENCIA else ""),
+        "gestante": Condicao.GESTANTE in cond,
+        "colo": colo,
+        "apoio": apoio,
+        "girassol": apoio == "girassol" or bool(cond & {Condicao.TEA, Condicao.ENFERMIDADE}),
+        "porte": "largo" if Condicao.OBESIDADE in cond else "",
+    }
 
 
 def _balao(e: Eleitor, motor) -> str:
@@ -100,13 +129,14 @@ def montar_cena(motor, selecionado: str | None = None) -> dict:
             "posicao": pos_fila[e.id] + 1 if e.id in pos_fila else None,
             "acao": _acao(e, motor),
             "balao": _balao(e, motor), "paleta": paleta(e.id), "selecionado": e.id == selecionado,
+            "perfil": perfil_visual(e, motor.config.data_eleicao),
             "starvation": e.estado == EstadoEleitor.AGUARDANDO
             and e.espera(agora) >= motor.config.limiar_starvation_min,
         }
         pessoas.append(pessoa)
         if e.acompanhante_visual:
             pessoas.append({**pessoa, "id": f"{e.id}-acomp", "tipo": "acompanhante", "rotulo": "Acompanhante",
-                            "icone": "A", "balao": "", "segue": e.id, "paleta": paleta(e.id + "a"),
+                            "icone": "A", "balao": "", "segue": e.id, "paleta": paleta(e.id + "a"), "perfil": {},
                             "selecionado": False, "starvation": False})
 
     pres = secao.presidente
