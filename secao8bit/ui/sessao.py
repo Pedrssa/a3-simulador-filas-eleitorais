@@ -65,6 +65,28 @@ class SessaoSimulacao:
         self.pausar()
         self.executar(self.motor.passo)
 
+    def avancar_ate_chamada(self, limite: int = 2000) -> bool:
+        """Processa eventos até a próxima retirada da fila (SAIDA_FILA). Para o modo apresentação.
+
+        Usa o mesmo `motor.passo` do botão de 1 evento: muda só onde a execução para, não o resultado.
+        """
+        self.pausar()
+        inicio = len(self.motor.log)
+        for _ in range(limite):
+            if self.motor.concluida:
+                return False
+            self.executar(self.motor.passo)
+            if self.erro:
+                return False
+            if any(r.tipo == "SAIDA_FILA" for r in self.motor.log[inicio:]):
+                return True
+        return False
+
+    def carregar_demo(self) -> None:
+        """Cenário conhecido da apresentação: demo_7min, seed 2026, regras eleitorais."""
+        self.reiniciar(config_do_cenario("demo_7min").com(seed=2026, politica="eleitoral", politica_params={},
+                                                          designar_substituto=False, tecnico_de_prontidao=False))
+
     def tick(self, agora_real: float | None = None) -> int:
         """Avança o tempo simulado proporcionalmente ao tempo real desde o último tick."""
         if not self.rodando:
