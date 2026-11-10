@@ -20,6 +20,8 @@ from secao8bit.infrastructure.repositorio_sqlite import RepositorioAuditoria
 RAIZ = Path(__file__).resolve().parents[2]
 BANCO = RAIZ / "dados" / "auditoria.sqlite3"
 TICK_S = 0.5
+# minutos simulados por segundo real (exibidos como múltiplos do tempo real: 0,05 = 3×, 1 = 60×)
+VELOCIDADES = [0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 15.0]
 MAX_ATRASO_S = 1.5  # se o navegador ficar parado, não "pula" mais que isso de tempo real
 
 
@@ -29,7 +31,7 @@ class SessaoSimulacao:
     repo: RepositorioAuditoria
     motor: MotorSimulacao
     rodando: bool = False
-    velocidade: float = 1.0  # minutos simulados por segundo real
+    velocidade: float = 0.25  # minutos simulados por segundo real (15× o tempo real)
     ultimo_tick: float | None = None
     selecionado: str | None = None
     erro: str | None = None
