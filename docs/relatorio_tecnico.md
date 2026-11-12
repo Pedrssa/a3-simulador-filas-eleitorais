@@ -85,7 +85,7 @@ assets/cena8bit (Canvas/JS): só desenha o dicionário produzido por application
 **Por que heap**: as operações dominantes são inserir e retirar o menor. Com uma lista ordenada, a inserção
 custaria O(n); com uma lista simples, a extração custaria O(n). Com n ≤ algumas centenas, qualquer escolha
 seria rápida, mas a heap é a estrutura correta para o problema e permite discutir a diferença entre a
-**ordem física** do array e a **ordem efetiva** de atendimento (a aba C mostra as duas).
+**ordem física** do array e a **ordem efetiva** de atendimento (a visão 3 mostra as duas lado a lado; a visão 1 demonstra a diferença com poucas pessoas).
 
 **Aging com chave dependente do tempo**: mudar o relógio não reorganiza a heap. Antes de cada chamada, o motor
 executa `FilaPrioridade.reconstruir(calcular_chave)`, que recalcula todas as chaves e refaz a heap.

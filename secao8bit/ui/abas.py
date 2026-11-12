@@ -254,6 +254,12 @@ def _dot_heap(fila: FilaPrioridade, eleitores) -> str:
 
 # ================================================================ D. métricas
 def aba_metricas(s: SessaoSimulacao) -> None:
+    metricas_sla(s)
+    st.divider()
+    comparacao_politicas(s)
+
+
+def metricas_sla(s: SessaoSimulacao) -> None:
     m, cfg = s.motor, s.motor.config
     met = servico_para(cfg)
     r = met.resumo(m)
@@ -267,13 +273,15 @@ def aba_metricas(s: SessaoSimulacao) -> None:
     k[3].metric("Espera p95 (min)", _num(r["espera_p95"]), help="Inclui quem ainda espera (censurado)")
     k[4].metric("Violações de SLA", r["violacoes_sla"])
     k[5].metric("Alertas starvation", r["alertas_starvation"])
-    k = st.columns(6)
-    k[0].metric("Espera média (min)", _num(r["espera_media"]))
-    k[1].metric("Espera máxima (min)", _num(r["espera_max"]))
-    k[2].metric("Tempo no sistema (min)", _num(r["tempo_sistema_medio"]))
-    k[3].metric("Ocupação da urna", f"{r['ocupacao_urna']:.0%}")
-    k[4].metric("Urna indisponível (min)", _num(r["indisponibilidade_urna_min"]))
-    k[5].metric("Encaminhados / não admitidos", f"{r['encaminhados']} / {r['nao_admitidos']}")
+    with st.expander("Mais indicadores"):
+        k = st.columns(3)
+        k[0].metric("Espera média (min)", _num(r["espera_media"]))
+        k[1].metric("Espera máxima (min)", _num(r["espera_max"]))
+        k[2].metric("Tempo no sistema (min)", _num(r["tempo_sistema_medio"]))
+        k = st.columns(3)
+        k[0].metric("Ocupação da urna", f"{r['ocupacao_urna']:.0%}")
+        k[1].metric("Urna indisponível (min)", _num(r["indisponibilidade_urna_min"]))
+        k[2].metric("Encaminhados / não admitidos", f"{r['encaminhados']} / {r['nao_admitidos']}")
 
     eleitores = list(m.secao.eleitores.values())
     st.markdown("**Espera por grupo** (min) — colunas 'incl.' contam quem ainda espera com a espera até agora")
@@ -288,7 +296,9 @@ def aba_metricas(s: SessaoSimulacao) -> None:
         st.markdown("**Tamanho da fila ao longo do tempo simulado**")
         st.line_chart(serie, x="min", y="fila", height=200)
 
-    st.divider()
+
+def comparacao_politicas(s: SessaoSimulacao) -> None:
+    cfg = s.motor.config
     st.markdown("### Comparação de políticas com a mesma carga")
     st.caption("Cada variante recebe exatamente as mesmas chegadas, perfis, durações e incidentes (mesmos fluxos "
                "pseudoaleatórios da seed). A assinatura da carga abaixo prova isso.")

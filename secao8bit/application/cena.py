@@ -190,6 +190,8 @@ def montar_cena(motor, selecionado: str | None = None) -> dict:
         "identificacao": recurso(secao.posto_identificacao),
         "comprovante": recurso(secao.posto_comprovante),
         "fila_total": len(ordem),
+        "ultima_chamada": ({"eleitor": u["eleitor"], "ultrapassou": len(u["ultrapassou"])}
+                           if (u := motor.estado.ultima_chamada) else None),
         "pessoas": pessoas,
         "recentes": motor.estado.recentes[-12:],
         "incidentes": [f"{k}: {v['tipo']} ({v.get('etapa', '')})" for k, v in motor.estado.incidentes_ativos.items()],

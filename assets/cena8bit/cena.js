@@ -23,7 +23,7 @@
   function ajustarAltura() { enviar("streamlit:setFrameHeight", { height: document.body.scrollHeight + 4 }); }
 
   let escala = 2, fundo = null, fundoMinuto = -1;
-  let cena = null, somLigado = false, reduzido = false, transicaoMs = 500;
+  let cena = null, somLigado = false, reduzido = false, transicaoMs = 500, dialogos = false;
   const sprites = new Map();
   let ultimoSeqSom = -1, ultimoSeqDestaque = -1;
   const carro = { x: -70, alvo: -70 };
@@ -33,6 +33,7 @@
     if (!d || d.type !== "streamlit:render") return;
     const a = d.args || {};
     somLigado = !!a.som;
+    dialogos = !!a.dialogos;
     reduzido = !!a.reduzido || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     transicaoMs = Math.max(150, a.transicao_ms || 500);
     redimensionar();
@@ -137,9 +138,11 @@
     const agoraMs = performance.now();
     for (const r of nova.recentes || []) {
       if (r.seq <= ultimoSeqDestaque) continue;
-      const rot = DESTAQUES[r.tipo];
+      let rot = DESTAQUES[r.tipo];
+      const uc = nova.ultima_chamada;
+      if (r.tipo === "SAIDA_FILA" && uc && uc.eleitor === r.eleitor && uc.ultrapassou > 0) rot = "PASSOU À FRENTE!";
       const s = r.eleitor && sprites.get(r.eleitor);
-      if (rot && s && ultimoSeqDestaque >= 0) s.destaque = { texto: rot, ate: agoraMs + 1400, forte: r.tipo === "SAIDA_FILA" };
+      if (rot && s && ultimoSeqDestaque >= 0) s.destaque = { texto: rot, ate: agoraMs + 2600, forte: r.tipo === "SAIDA_FILA" };
     }
     if ((nova.recentes || []).length) ultimoSeqDestaque = Math.max(ultimoSeqDestaque, ...nova.recentes.map((r) => r.seq));
     tocarSons(nova.recentes || []);
@@ -203,7 +206,7 @@
   // O tamanho exibido (CSS) acompanha a largura disponível, independente da resolução interna.
   function redimensionar() {
     const larg = Math.max(200, document.body.clientWidth - 8);
-    const vis = larg >= 2 * W ? Math.min(4, Math.floor(larg / W)) : Math.min(2, larg / W);
+    const vis = Math.min(4, larg / W); // ocupa a largura disponível (no projetor, a cena cresce)
     const dispositivo = vis * (window.devicePixelRatio || 1);
     canvas.style.width = Math.round(W * vis) + "px"; canvas.style.height = Math.round(H * vis) + "px";
     document.documentElement.style.setProperty("--largura", Math.round(W * vis) + "px");
@@ -459,7 +462,7 @@
     r(ctx, 368, 174, 10, 8, "#e2e2e2"); r(ctx, 368, 174, 10, 1, "#ffffff"); r(ctx, 369, 177, 8, 1, "#b7b7b7"); // urna (por trás)
     if (cena) {
       const u = cena.urna;
-      const cor = u.estado === "DISPONIVEL" ? "#3ddc6a" : u.estado === "OCUPADO" ? "#ffd34d" : "#ff3b3b";
+      const cor = u.estado === "DISPONIVEL" ? "#3ddc6a" : u.estado === "OCUPADO" ? "#ffd34d" : "#c62828";
       r(ctx, 352, 140, 26, 8, "#14100a"); r(ctx, 353, 141, 5, 6, cor);
       caixa(ctx, u.estado === "DISPONIVEL" ? "LIVRE" : u.estado === "OCUPADO" ? "EM USO" : "PARADA", 368, 140.5, { centro: true, cor: "#ffffff" });
     }
@@ -477,7 +480,7 @@
     r(ctx, x + 12, y - 19, 22, 7, "#f4f4f4"); r(ctx, x + 14, y - 18, 8, 5, "#7fb6d9"); r(ctx, x + 24, y - 18, 8, 5, "#7fb6d9");
     r(ctx, x, y - 8, 48, 2, "#1f4fa8");
     const pisca = reduzido ? 0 : Math.floor(t / 200) % 2;
-    r(ctx, x + 18, y - 22, 5, 3, pisca ? "#ff3b3b" : "#7a1a1a"); r(ctx, x + 23, y - 22, 5, 3, pisca ? "#1a2a7a" : "#3b6bff");
+    r(ctx, x + 18, y - 22, 5, 3, pisca ? "#c62828" : "#7a1a1a"); r(ctx, x + 23, y - 22, 5, 3, pisca ? "#1a2a7a" : "#3b6bff");
     r(ctx, x + 6, y - 5, 8, 6, "#151515"); r(ctx, x + 9, y - 3, 2, 2, "#9a9a9a");
     r(ctx, x + 34, y - 5, 8, 6, "#151515"); r(ctx, x + 37, y - 3, 2, 2, "#9a9a9a");
     r(ctx, x + 46, y - 11, 2, 2, "#ffe98a");
@@ -801,6 +804,11 @@
     if (p.tipo === "mesa") return caixa(ctx, p.rotulo, s.x, y, { centro: true, fundo: "#1f5fa8", cor: "#ffffff" });
     if (ROTULO_PAPEL[p.tipo]) return caixa(ctx, ROTULO_PAPEL[p.tipo], s.x, y, { centro: true, fundo: p.tipo === "policial" ? "#1e2b48" : (visual(p).colete || "#6ab04c"), cor: p.tipo === "policial" ? "#ffffff" : "#14100a" });
     if (p.tipo !== "eleitor" || p.zona === "cabine") return;
+    if (cena && cena.proximo && cena.proximo.id === p.id && (p.zona === "fila" || p.zona === "assento")) {
+      const txt = "▼ PRÓXIMO" + (p.icone ? " " + p.icone : "");
+      ocupa(txt, s.topo - 11);
+      return caixa(ctx, txt, s.x, s.topo - 11, { centro: true, fundo: "#ffd34d", borda: "#14100a" });
+    }
     const naEspera = p.zona === "fila" || p.zona === "assento";
     if (naEspera && !(p.posicao <= 3 || p.classe === 0 || p.starvation || p.selecionado)) return;
     if (!naEspera && !p.icone && !p.selecionado) return;
@@ -808,7 +816,7 @@
     if (p.posicao) etiqueta = `${p.posicao}${etiqueta ? " " + etiqueta : ""}`;
     if (etiqueta) ocupa(etiqueta, y);
     if (etiqueta) caixa(ctx, etiqueta, s.x, y, { centro: true, fundo: COR_CLASSE[p.classe] || "#e8e8e8" });
-    if (p.starvation) caixa(ctx, "!", s.x + 7, s.topo, { fundo: "#ff3b3b", cor: "#ffffff" });
+    if (p.starvation) caixa(ctx, "!", s.x + 7, s.topo, { fundo: "#c62828", cor: "#ffffff" });
   }
   function desenharBalao(s, t, fala) {
     const p = s.dados;
@@ -858,6 +866,7 @@
 
   function falas(t) {
     const out = new Map(); // id → [texto, falaAtual]
+    if (!dialogos) return out; // conversas são ilustrativas: desligadas por padrão para não disputar atenção
     if (!cena) return out;
     const vivos = new Map([...sprites].filter(([, s]) => !s.aguardaCarro));
     const parado = (id) => vivos.has(id) && vivos.get(id).rota.length === 0;

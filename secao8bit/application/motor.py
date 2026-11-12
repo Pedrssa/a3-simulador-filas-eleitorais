@@ -92,6 +92,8 @@ class EstadoMotor:
     eventos_processados: int = 0
     ultimo_evento: str = ""
     recentes: list[dict] = field(default_factory=list)
+    # última retirada da fila: quem foi chamado, por qual regra e quem chegou antes e ficou para trás
+    ultima_chamada: dict | None = None
 
 
 class MotorSimulacao:
@@ -446,10 +448,19 @@ class MotorSimulacao:
                 politica=self.politica.versao, chave=list(entrada.chave), regra=regra,
                 espera=e.espera(agora), fila_restante=len(fila),
             )
+        ultrapassados = []
         for outro in fila:
             o = eleitores[outro.eleitor_id]
             if (o.chegada, o.seq_chegada) < (e.chegada, e.seq_chegada):
                 o.ultrapassado_por += 1
+                ultrapassados.append(o.id)
+        ultrapassados.sort(key=lambda i: (eleitores[i].chegada, eleitores[i].seq_chegada))
+        self.estado.ultima_chamada = {
+            "eleitor": e.id, "regra": regra, "chave": list(entrada.chave), "instante": agora,
+            "ultrapassou": ultrapassados, "politica": self.politica.nome,
+            "experimental": self.politica.experimental and not self.estado.encerrado,
+            "parametros": self.politica.parametros(), "justificativa": justificativa,
+        }
 
         secao.posto_identificacao.reservar(e.id, agora)
         anterior = e.transicionar(EstadoEleitor.IDENTIFICACAO, agora)
