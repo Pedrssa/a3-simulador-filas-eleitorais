@@ -1,12 +1,14 @@
 """Motor de eventos: reprodutibilidade, exclusividade da urna, não preempção, métricas."""
 
+import json
+from collections import Counter
 from dataclasses import replace
 
 import pytest
 
 from secao8bit.application.carga import Carga, GeradorCarga
 from secao8bit.application.comparacao import comparar
-from secao8bit.application.config import CENARIOS, config_do_cenario
+from secao8bit.application.config import CENARIOS, IncidenteProgramado, config_do_cenario
 from secao8bit.application.metricas import servico_para
 from secao8bit.application.motor import TIPOS_INCIDENTE, MotorSimulacao
 from secao8bit.domain.eleitor import EstadoEleitor
@@ -61,7 +63,11 @@ def test_invariantes_e_ninguem_duplicado(cenario, politica):
     assert all(e.finalizado for e in m.secao.eleitores.values())
     entradas = [r.eleitor_id for r in m.log if r.tipo == "ENTRADA_FILA"]
     saidas = [r.eleitor_id for r in m.log if r.tipo == "SAIDA_FILA"]
-    assert sorted(entradas) == sorted(saidas) and len(saidas) == len(set(saidas))
+    assert sorted(entradas) == sorted(saidas)
+    # Cada chamada à urna/identificação além da primeira exige uma saída AUSENTE anterior (art. 131: retorno).
+    ausencias = Counter(r.eleitor_id for r in m.log if r.tipo == "AUSENTE")
+    for eid, n in Counter(saidas).items():
+        assert n <= 1 + ausencias[eid], eid
     concluidos = sum(1 for e in m.secao.eleitores.values() if e.estado == EstadoEleitor.CONCLUIDO)
     assert m.secao.urna.votos_registrados == concluidos
 
@@ -190,3 +196,47 @@ def test_politica_eleitoral_sem_promocao_mesmo_com_starvation():
             # se um comum foi chamado, ninguém com preferência estava esperando
             assert all(m.secao.eleitores[x].classe == ClassePrioridade.COMUM for x in r.dados["ordem_fila"])
     assert comuns_chamados > 0
+
+
+def _carga_com_problema_de_documento(cfg):
+    """Uma pessoa comum que não apresenta documento com foto na primeira vez (art. 131)."""
+    g = GeradorCarga(cfg)
+    spec = g.especificar(0.0, False)
+    spec = replace(spec, ocorrencias=replace(spec.ocorrencias, secao_errada=False, problema_documento=True,
+                                             falha_biometria=False, biometria_irrecuperavel=False,
+                                             votacao_demorada=False, precisa_auxilio=False),
+                   acompanhante=None, duracoes_acompanhante=None,
+                   duracoes={**spec.duracoes, "identificacao": 1.0, "habilitacao": 0.5, "votacao": 5.0,
+                             "comprovante": 0.3})
+    return Carga((spec,), ())
+
+
+def test_documento_retorno_reentra_na_fila_e_vota_uma_vez():
+    cfg = config_do_cenario("normal")
+    m = MotorSimulacao(cfg, carga=_carga_com_problema_de_documento(cfg))
+    m.executar_tudo()
+    e = m.secao.eleitores["E-0001"]
+    registros = [r for r in m.log if r.eleitor_id == "E-0001"]
+    tipos = [r.tipo for r in registros]
+    entradas = [i for i, t in enumerate(tipos) if t == "ENTRADA_FILA"]
+    assert len(entradas) == 2
+    assert tipos.index("AUSENTE") < entradas[1]  # saiu para buscar o documento antes de reentrar
+    assert json.loads(registros[entradas[1]].dados_json)["retorno"] is True
+    assert e.estado == EstadoEleitor.CONCLUIDO
+    assert m.secao.urna.votos_registrados == 1
+
+
+def test_documento_sem_retorno_ate_o_encerramento_vira_encaminhado():
+    cfg = replace(config_do_cenario("normal"), prazo_documento_min=100000.0)
+    carga = _carga_com_problema_de_documento(cfg)
+    carga = replace(carga, incidentes=(IncidenteProgramado(30.0, "encerramento", {}),))
+    m = MotorSimulacao(cfg, carga=carga)
+    m.executar_tudo()
+    e = m.secao.eleitores["E-0001"]
+    assert e.estado == EstadoEleitor.ENCAMINHADO
+    assert "antes do encerramento" in e.motivo_saida
+    assert m.secao.urna.votos_registrados == 0
+
+
+def test_prazo_de_retorno_e_hipotese_documentada():
+    assert config_do_cenario("normal").prazo_documento_min == 15.0

@@ -23,7 +23,7 @@ import copy
 import json
 import random
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 
 from secao8bit.application.auditoria import (
@@ -512,17 +512,65 @@ class MotorSimulacao:
                     "Dúvida persistiu; o Juízo Eleitoral foi acionado e decidiu pela identidade (art. 132, § 3º). "
                     "Ocorrência consignada em ata." if o.impugnacao_persiste else
                     "Dúvida sanada após interrogatório e conferência de assinatura; consignado em ata (art. 132, III)."))
-        if o.secao_errada or o.problema_documento:
-            if o.secao_errada:
-                motivo = "não consta do cadastro desta urna: orientado(a) a contatar o cartório (art. 130, § 2º)"
-            else:
-                motivo = "sem documento oficial com foto aceito (art. 131): orientado(a) a retornar com documento"
+        if o.secao_errada:
             self.secao.posto_identificacao.liberar(e.id, self.agora)
-            self._encaminhar(e, motivo, "posto de identificação liberado")
+            self._encaminhar(e, "não consta do cadastro desta urna: orientado(a) a contatar o cartório (art. 130, § 2º)",
+                             "posto de identificação liberado")
+            return
+        if o.problema_documento:
+            self._sair_buscar_documento(e)
             return
         anterior = e.transicionar(EstadoEleitor.AGUARDANDO_URNA, self.agora)
         self._auditar("FIM_IDENTIFICACAO", "Documento conferido e CPF/título aceito (art. 133, II–IV).",
                       e, anterior.value, e.estado.value)
+
+    def _sair_buscar_documento(self, e: Eleitor) -> None:
+        """Sem documento com foto (art. 131): a pessoa sai para buscá-lo e pode voltar, sem perder a seção."""
+        self.secao.posto_identificacao.liberar(e.id, self.agora)
+        anterior = e.transicionar(EstadoEleitor.AUSENTE, self.agora)
+        self.rastreador.ponto(
+            "incidente", f"{e.id} sai para buscar documento com foto (art. 131); volta em "
+                         f"{self.config.prazo_documento_min:g} min, se houver tempo de recebimento.",
+            antes=anterior.value, depois=e.estado.value,
+            animacao=f"{e.id} sai pelo portão; balão 'Buscar documento'", eleitor=e.id,
+            recurso="posto de identificação liberado",
+        )
+        self._auditar("AUSENTE", "Sem documento oficial com foto aceito (art. 131): saiu para buscar o documento "
+                      "e pode retornar enquanto a seção recebe eleitores.", e, anterior.value, e.estado.value,
+                      som="alerta", prazo_min=self.config.prazo_documento_min)
+        self.estado.agenda.agendar(self.agora + self.config.prazo_documento_min, TipoEvento.RETORNO_DOCUMENTO,
+                                   eleitor_id=e.id)
+
+    def _ev_retorno_documento(self, ev: EventoSimulacao) -> None:
+        """Volta com documento aceito: entra de novo na fila, no fim do seu grupo (chegada = retorno)."""
+        e = self.secao.eleitores[ev.dados["eleitor_id"]]
+        if e.estado != EstadoEleitor.AUSENTE:
+            return
+        if not self.secao.recebendo_eleitores:
+            self._encaminhar(e, "não retornou com documento antes do encerramento (art. 160)", "—")
+            return
+        agora = self.agora
+        e.ocorrencias = replace(e.ocorrencias, problema_documento=False)  # só o documento foi regularizado
+        self.estado.contador_eleitores += 1
+        e.chegada = agora
+        e.seq_chegada = self.estado.contador_eleitores
+        anterior = e.transicionar(EstadoEleitor.AGUARDANDO, agora)
+        chave = self.politica.chave(e, agora)
+        self.secao.fila.inserir(e.id, chave)
+        ordem = [x.eleitor_id for x in self.secao.fila.ordem_efetiva()]
+        posicao = ordem.index(e.id) + 1
+        self.rastreador.ponto(
+            "insercao", f"{e.id} voltou com documento e foi reinserido na heap com chave {chave}; "
+                        f"posição efetiva {posicao} de {len(ordem)}.",
+            antes=f"fila com {len(ordem) - 1}", depois=f"fila com {len(ordem)}",
+            animacao=f"{e.id} volta pelo portão e caminha até a posição {posicao}",
+            referencia=FilaPrioridade.inserir, eleitor=e.id, chave=list(chave), posicao=posicao,
+            tamanho=len(ordem),
+        )
+        self._auditar("ENTRADA_FILA", "Retorno com documento com foto aceito (art. 131): reentra na fila no fim "
+                      "do seu grupo de prioridade.", e, anterior.value, e.estado.value, som="chegada",
+                      classe=e.classe.name, chave=list(chave), posicao_efetiva=posicao,
+                      tamanho_fila=len(ordem), ordem_fila=ordem[:30], retorno=True)
 
     def _encaminhar(self, e: Eleitor, motivo: str, recurso: str) -> None:
         anterior = e.transicionar(EstadoEleitor.ENCAMINHADO, self.agora)

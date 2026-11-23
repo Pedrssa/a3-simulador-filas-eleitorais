@@ -18,6 +18,7 @@ class EstadoEleitor(Enum):
     AGUARDANDO_COMPROVANTE = "aguardando comprovante"
     COMPROVANTE = "recebendo comprovante"
     CONCLUIDO = "concluído"
+    AUSENTE = "fora da seção (buscando documento)"
     ENCAMINHADO = "encaminhado (não votou aqui)"
     NAO_ADMITIDO = "não admitido (após encerramento)"
 
@@ -25,7 +26,8 @@ class EstadoEleitor(Enum):
 TRANSICOES_VALIDAS: dict[EstadoEleitor, set[EstadoEleitor]] = {
     EstadoEleitor.CHEGANDO: {EstadoEleitor.AGUARDANDO, EstadoEleitor.NAO_ADMITIDO},
     EstadoEleitor.AGUARDANDO: {EstadoEleitor.IDENTIFICACAO, EstadoEleitor.ENCAMINHADO},
-    EstadoEleitor.IDENTIFICACAO: {EstadoEleitor.AGUARDANDO_URNA, EstadoEleitor.ENCAMINHADO},
+    EstadoEleitor.IDENTIFICACAO: {EstadoEleitor.AGUARDANDO_URNA, EstadoEleitor.AUSENTE, EstadoEleitor.ENCAMINHADO},
+    EstadoEleitor.AUSENTE: {EstadoEleitor.AGUARDANDO, EstadoEleitor.ENCAMINHADO},
     EstadoEleitor.AGUARDANDO_URNA: {EstadoEleitor.HABILITACAO},
     EstadoEleitor.HABILITACAO: {EstadoEleitor.VOTANDO, EstadoEleitor.ENCAMINHADO},
     EstadoEleitor.VOTANDO: {EstadoEleitor.AGUARDANDO_COMPROVANTE},

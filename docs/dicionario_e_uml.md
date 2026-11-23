@@ -176,6 +176,8 @@ classDiagram
         #_auditar(tipo, justificativa, ...)
         #_tentar_admitir() bool
         #_tentar_urna() bool
+        #_sair_buscar_documento(e)
+        #_ev_retorno_documento(ev)
     }
     class EstadoMotor {
         +secao SecaoEleitoral

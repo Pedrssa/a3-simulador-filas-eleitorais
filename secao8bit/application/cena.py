@@ -21,6 +21,7 @@ _ZONA_POR_ESTADO = {  # chave = nome do estado
     "VOTANDO": "cabine",
     "COMPROVANTE": "comprovante",
     "CONCLUIDO": "saida",
+    "AUSENTE": "saida",
     "ENCAMINHADO": "saida",
     "NAO_ADMITIDO": "recusado",
 }
@@ -78,6 +79,8 @@ def _balao(e: Eleitor, motor) -> str:
         return "Falhou!" if o.falha_biometria else ""
     if est == EstadoEleitor.VOTANDO:
         return "Votando"
+    if est == EstadoEleitor.AUSENTE:
+        return "Buscar documento"
     if est == EstadoEleitor.ENCAMINHADO:
         if "cartório" in e.motivo_saida:
             return "Ir ao cartório"
@@ -224,6 +227,7 @@ _FRASES = {
     "FIM_VOTACAO": "{q} terminou de votar; a urna ficou livre",
     "INICIO_COMPROVANTE": "{q} recebe o comprovante do 2º mesário",
     "SAIDA": "{q} saiu da seção",
+    "AUSENTE": "{q} saiu para buscar documento com foto",
     "ENCAMINHADO": "{q} não pôde votar aqui",
     "CHEGADA_NAO_ADMITIDA": "{q} chegou depois das 17h e não foi admitido(a)",
 }

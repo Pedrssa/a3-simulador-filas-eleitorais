@@ -103,7 +103,7 @@ de starvation: se a demanda total supera a capacidade, a espera cresce para todo
 
 ## 6. Resultados reproduzíveis (comparação com a mesma carga)
 
-Gerados por `python scripts/gerar_exemplos.py` em 27/10/2026. Esperas em minutos, contando quem ainda
+Gerados por `python scripts/gerar_exemplos.py` em 23/11/2026 (após o retorno de quem busca documento). Esperas em minutos, contando quem ainda
 aguardava ("incl.").
 
 **Cenário `starvation`** (seed 7, 30 pessoas/h com preferência e 8/h sem; capacidade da urna ≈ 25–27/h; sem incidentes):
@@ -119,16 +119,16 @@ aguardava ("incl.").
 
 | Variante | comum máx | comum p95 | pref. máx | doador máx | 80+ máx | violações SLA |
 |---|---|---|---|---|---|---|
-| Regras eleitorais | 104,8 | 104,0 | 48,8 | 97,0 | 2,3 | 45 |
-| Regras + mitigação operacional | 94,3 | 93,5 | 38,3 | 86,5 | 2,3 | 45 |
-| LAB: aging (15 min) | 84,7 | 78,3 | 85,6 | 62,2 | 2,3 | 45 |
-| LAB: cotas (k=3) | 100,8 | 100,8 | 65,0 | 115,2 | 2,3 | 44 |
+| Regras eleitorais | 109,3 | 108,5 | 47,6 | 98,9 | 2,3 | 41 |
+| Regras + mitigação operacional | 98,8 | 98,0 | 37,1 | 88,4 | 2,3 | 41 |
+| LAB: aging (15 min) | 84,7 | 78,3 | 85,6 | 66,1 | 2,3 | 44 |
+| LAB: cotas (k=3) | 104,0 | 100,8 | 65,0 | 117,1 | 2,3 | 42 |
 
 Leitura:
 
 1. Com a **regra eleitoral**, o pior caso dos comuns cresce com a duração do pico. É starvation real.
 2. A **mitigação operacional** só ajuda quando o gargalo é um recurso **indisponível** (demo: falha de urna, Presidente ocupado; a espera máxima
-   dos comuns cai de 104,8 para 94,3 min). No cenário `starvation` não há o que recuperar: a urna está quase 100% ocupada.
+   dos comuns cai de 109,3 para 98,8 min). No cenário `starvation` não há o que recuperar: a urna está quase 100% ocupada.
 3. O **aging** limita a espera dos comuns (117 → 37 min), mas aumenta a dos preferenciais e o total de
    violações. Ele redistribui a espera; não cria capacidade.
 4. As **cotas** atendem só a classe "comum": a espera é empurrada para os **doadores** (109,7 → 154,8 min).
@@ -195,7 +195,10 @@ cada evento, que as posições da fila são a ordem efetiva da heap e que a cabi
 - Durações, taxas e probabilidades são hipóteses, não dados oficiais.
 - Não modelados: mesários e fiscais votando (art. 129, § 1º); primeiro eleitor aguardando o segundo (art. 136);
   falha de urna no meio do voto e votação por cédula (arts. 150 e
-  seguintes); retorno de quem foi buscar documento; justificativa eleitoral; decisão real do Juízo numa impugnação (o modelo assume identidade confirmada).
+  seguintes); justificativa eleitoral; decisão real do Juízo numa impugnação (o modelo assume identidade confirmada).
+- Retorno com documento: quem não apresenta documento com foto sai, volta após um prazo fixo (15 min, hipótese) e
+  reentra no fim do seu grupo. A espera é contada a partir do retorno, então o tempo fora da seção não entra na
+  métrica de espera. Quem não volta antes do encerramento é encaminhado.
 - O acompanhante que vota aqui recebe um perfil neutro (não tem condições próprias de prioridade).
 - Quando a Presidência está ocupada, novas ocorrências que a exigiriam são assumidas por um mesário
   (art. 124, § 2º) sem custo extra modelado.

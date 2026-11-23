@@ -43,6 +43,8 @@ class ConfiguracaoSimulacao:
     # Ocorrências individuais (sorteadas por pessoa na carga).
     prob_secao_errada: float = 0.03
     prob_problema_documento: float = 0.025
+    # Hipótese: tempo para buscar documento com foto e voltar à seção (min, simulados).
+    prazo_documento_min: float = 15.0
     prob_falha_biometria: float = 0.10
     prob_biometria_irrecuperavel: float = 0.1  # condicional a falha
     prob_auxilio: float = 0.5  # condicional a deficiência/mobilidade reduzida

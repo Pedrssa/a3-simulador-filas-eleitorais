@@ -22,6 +22,7 @@ class TipoEvento(Enum):
     INCIDENTE = 5
     ENCERRAMENTO = 6
     CHEGADA = 7
+    RETORNO_DOCUMENTO = 8  # volta à seção com documento aceito (art. 131)
 
 
 @dataclass(frozen=True)
