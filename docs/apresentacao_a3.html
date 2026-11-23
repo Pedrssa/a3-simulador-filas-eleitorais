@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A3 · SEÇÃO 8-BIT — Filas de Prioridade</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #1C1B20;
+      --bg-soft: #23222A;
+      --surface: #2A2933;
+      --surface-2: #312F3D;
+      --text: #F5F7FB;
+      --text-soft: #B8BCC8;
+      --line: rgba(255,255,255,0.10);
+
+      --accent: #28C2C4;
+      --accent-2: #B0AFFA;
+      --accent-3: #7BE7E8;
+
+      --success: #6EE7B7;
+      --warning: #F6C177;
+      --danger: #FF7B9C;
+
+      --shadow-soft: 0 10px 30px rgba(0,0,0,0.25);
+      --shadow-glow: 0 0 0 1px rgba(40,194,196,0.16), 0 0 32px rgba(40,194,196,0.12);
+
+      --radius-md: 20px;
+      --radius-lg: 24px;
+      --radius-xl: 28px;
+
+      --fs-display: clamp(56px, 7vw, 96px);
+      --fs-h2: clamp(28px, 3.6vw, 48px);
+      --fs-h3: clamp(22px, 2.2vw, 30px);
+      --fs-body-lg: clamp(18px, 1.5vw, 24px);
+      --fs-body: 18px;
+      --fs-mono: 13px;
+
+      --container-pad-y: 56px;
+      --container-pad-x: 64px;
+      --content-max: 1280px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(176,175,250,0.10), transparent 30%),
+        radial-gradient(circle at 80% 30%, rgba(40,194,196,0.10), transparent 28%),
+        linear-gradient(180deg, #1C1B20 0%, #17161B 100%);
+      color: var(--text);
+      font-family: "Chakra Petch", "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .slide {
+      position: relative;
+      min-height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      display: grid;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(circle at center, black 45%, transparent 100%);
+      opacity: 0.25;
+      z-index: 0;
+    }
+
+    .slide-inner {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      width: min(100%, calc(var(--content-max) + (var(--container-pad-x) * 2)));
+      margin: 0 auto;
+      padding: var(--container-pad-y) var(--container-pad-x);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 28px;
+    }
+
+    .slide-counter {
+      position: absolute;
+      top: 28px;
+      right: 32px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: var(--fs-mono);
+      letter-spacing: 0.16em;
+      color: var(--text-soft);
+      z-index: 3;
+    }
+
+    .mono {
+      font-family: "JetBrains Mono", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow { font-family: "JetBrains Mono", monospace; font-size: var(--fs-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+
+    h1, h2, h3, p, blockquote, ul, ol, figure { margin: 0; }
+
+    h1 {
+      font-size: var(--fs-display);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      font-weight: 700;
+      max-width: 14ch;
+    }
+
+    h2 {
+      font-size: var(--fs-h2);
+      line-height: 1.06;
+      letter-spacing: -0.025em;
+      font-weight: 600;
+      max-width: 22ch;
+    }
+
+    h3 { font-size: var(--fs-h3); line-height: 1.15; letter-spacing: -0.01em; font-weight: 600; color: var(--text); }
+
+    p, li { font-size: var(--fs-body); line-height: 1.5; color: var(--text-soft); }
+
+    .accent-text { color: var(--accent); text-shadow: 0 0 24px rgba(40,194,196,0.18); }
+    .accent-2-text { color: var(--accent-2); }
+    .warn-text { color: var(--warning); }
+
+    .section-heading { display: flex; flex-direction: column; gap: 10px; max-width: 920px; }
+
+    .subtitle { max-width: 900px; font-size: var(--fs-body-lg); line-height: 1.4; color: var(--text-soft); }
+
+    .hero { display: flex; flex-direction: column; gap: 18px; max-width: 1000px; }
+
+    .hero-badge {
+      align-self: flex-start;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(40,194,196,0.25);
+      background: rgba(40,194,196,0.08);
+      box-shadow: var(--shadow-glow);
+      color: var(--text);
+      font-size: var(--fs-mono);
+      font-family: "JetBrains Mono", monospace;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .grid { display: grid; gap: 20px; }
+    .cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .card, .stat-card, .comparison-col, .faq-item {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .card, .faq-item { padding: 26px; display: flex; flex-direction: column; gap: 12px; }
+    .card--accent, .comparison-col.accent { border-color: rgba(40,194,196,0.30); box-shadow: var(--shadow-glow); }
+
+    .card-label, .feature-tag, .stat-label {
+      font-family: "JetBrains Mono", monospace;
+      font-size: var(--fs-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+
+    .comparison-col { padding: 30px; display: flex; flex-direction: column; gap: 16px; min-height: 340px; }
+    .comparison-col.muted { opacity: 0.92; }
+    .comparison-col ul { padding: 0; margin: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+    .comparison-col li { padding-left: 22px; position: relative; }
+    .comparison-col li::before { content: ""; position: absolute; left: 0; top: 0.62em; width: 8px; height: 8px; border-radius: 999px; background: var(--accent); box-shadow: 0 0 12px rgba(40,194,196,0.5); }
+    .comparison-col.muted li::before { background: var(--text-soft); box-shadow: none; opacity: 0.6; }
+
+    .statement {
+      max-width: 22ch;
+      font-size: clamp(36px, 4.6vw, 66px);
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .stat-block { display: flex; flex-direction: column; gap: 14px; justify-content: center; min-height: 58vh; }
+    .stat-value { font-size: clamp(64px, 9vw, 150px); line-height: 0.95; letter-spacing: -0.04em; color: var(--text); font-weight: 700; }
+    .stats-grid .stat-card { padding: 30px 26px; min-height: 230px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; }
+    .stats-grid .stat-value { font-size: clamp(48px, 5.6vw, 84px); color: var(--accent-3); text-shadow: 0 0 28px rgba(40,194,196,0.12); }
+
+    .timeline { display: grid; gap: 16px; }
+    .timeline-item { display: grid; grid-template-columns: 24px 1fr; gap: 18px; align-items: start; }
+    .timeline-dot { width: 14px; height: 14px; border-radius: 999px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 0 0 6px rgba(40,194,196,0.08); margin-top: 9px; }
+    .timeline-copy { padding-bottom: 14px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 130px 1fr; gap: 6px 22px; align-items: baseline; }
+    .timeline-copy .mono { color: var(--accent); }
+    .timeline-copy p { font-size: 17px; }
+
+    .team { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 40px; }
+    .team span { font-family: "JetBrains Mono", monospace; font-size: 14px; color: var(--text-soft); }
+    .team b { font-weight: 500; color: var(--text); }
+
+    .diagram { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+    .diagram-node { padding: 24px; border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); box-shadow: var(--shadow-soft); display: flex; flex-direction: column; gap: 12px; position: relative; }
+    .diagram-node:not(:last-child)::after { content: ""; position: absolute; top: 50%; right: -14px; width: 28px; height: 1px; background: linear-gradient(90deg, rgba(40,194,196,0.5), rgba(176,175,250,0.3)); }
+    .diagram-node.focus { border-color: rgba(40,194,196,0.30); box-shadow: var(--shadow-glow); }
+
+    .table-wrap { border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-soft); }
+    table { width: 100%; border-collapse: collapse; font-size: 17px; }
+    th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--line); }
+    th { font-family: "JetBrains Mono", monospace; font-size: var(--fs-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); background: rgba(40,194,196,0.07); font-weight: 500; }
+    td { color: var(--text-soft); }
+    td.num { font-family: "JetBrains Mono", monospace; color: var(--text); white-space: nowrap; }
+    tr.lab td:first-child::after { content: " LAB"; font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--warning); letter-spacing: 0.1em; }
+    tr:last-child td { border-bottom: none; }
+
+    .notice {
+      padding: 18px 22px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(246,193,119,0.28);
+      background: rgba(246,193,119,0.06);
+      color: var(--text-soft);
+      font-size: 17px;
+    }
+    .notice b { color: var(--warning); font-weight: 600; }
+
+    .note {
+      padding: 18px 22px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-soft);
+      font-size: 17px;
+    }
+
+    .faq-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .faq-item h3 { font-size: 24px; }
+    .faq-item p { font-size: 17px; }
+
+    .closing-content { display: flex; flex-direction: column; gap: 18px; max-width: 920px; }
+
+    .animate { opacity: 0; transform: translateY(18px); transition: opacity 0.7s ease, transform 0.7s ease; will-change: opacity, transform; }
+    .animate.in { opacity: 1; transform: translateY(0); }
+    .delay-1 { transition-delay: 80ms; }
+    .delay-2 { transition-delay: 160ms; }
+    .delay-3 { transition-delay: 240ms; }
+    .delay-4 { transition-delay: 320ms; }
+    .delay-5 { transition-delay: 400ms; }
+
+    .dot-nav { position: fixed; top: 50%; right: 18px; transform: translateY(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+    .dot-nav button { width: 12px; height: 12px; border-radius: 999px; border: none; padding: 0; background: rgba(255,255,255,0.22); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); cursor: pointer; transition: transform 0.2s ease, background 0.2s ease; }
+    .dot-nav button.active { background: var(--accent); box-shadow: 0 0 0 6px rgba(40,194,196,0.12); transform: scale(1.12); }
+
+    @media (max-width: 1100px) {
+      :root { --container-pad-y: 44px; --container-pad-x: 36px; }
+      .cols-3, .diagram, .faq-list, .comparison-grid { grid-template-columns: 1fr; }
+      .diagram-node:not(:last-child)::after { display: none; }
+    }
+
+    @media (max-width: 720px) {
+      :root { --container-pad-y: 28px; --container-pad-x: 20px; --fs-body: 16px; }
+      .slide-counter { top: 16px; right: 20px; }
+      .dot-nav { right: 10px; }
+      .cols-2, .team, .faq-list, .timeline-copy { grid-template-columns: 1fr; }
+    }
+
+
+    /* ---------- Animações contextuais (sequências por slide; o PDF mostra o estado final) ---------- */
+    .heap-area { position: relative; height: 340px; width: 100%; max-width: 900px; margin: 0 auto; }
+    .heap-area svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .heap-area line { stroke: rgba(255,255,255,0.20); stroke-width: 1.5; }
+    .hnode { position: absolute; width: 66px; height: 46px; margin: -23px 0 0 -33px; display: grid; place-items: center;
+      border-radius: 14px; border: 1px solid rgba(255,255,255,0.14); background: var(--surface); color: var(--text);
+      font-family: "JetBrains Mono", monospace; font-size: 20px; opacity: 0;
+      transition: left 0.8s ease, top 0.8s ease, opacity 0.5s ease, border-color 0.4s ease, box-shadow 0.4s ease; }
+    .hnode.on { opacity: 1; }
+    .hnode.hl { border-color: var(--warning); box-shadow: 0 0 0 4px rgba(246,193,119,0.16); }
+    .arr-seq { font-family: "JetBrains Mono", monospace; font-size: 18px; color: var(--text-soft); text-align: center; min-height: 26px; }
+    .cap-seq { min-height: 56px; font-size: 19px; line-height: 1.4; color: var(--text); text-align: center; max-width: 860px; margin: 0 auto; }
+
+    .bars { display: grid; gap: 12px; max-width: 980px; }
+    .bar-row { display: grid; grid-template-columns: 250px 1fr 110px; align-items: center; gap: 16px; font-size: 16px; color: var(--text-soft); }
+    .bar-track { height: 18px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }
+    .bar-fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-3));
+      transition: width 0.9s ease; }
+    .bar-fill.lab { background: linear-gradient(90deg, var(--warning), #F9D99B); }
+    .bar-val { font-family: "JetBrains Mono", monospace; color: var(--text); text-align: right; }
+
+    .chain { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0; }
+    .blk { width: 170px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.12); background: var(--surface);
+      font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--text-soft); opacity: 0;
+      transition: opacity 0.5s ease, border-color 0.4s ease, background 0.4s ease, color 0.4s ease; }
+    .blk b { display: block; color: var(--text); font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+    .blk.on { opacity: 1; }
+    .blk.bad { border-color: var(--danger); color: var(--danger); background: rgba(255,123,156,0.08); }
+    .lnk { width: 40px; height: 2px; background: rgba(40,194,196,0.55); transform: scaleX(0); transform-origin: left center;
+      transition: transform 0.6s ease, background 0.4s ease; }
+    .lnk.on { transform: scaleX(1); }
+    .lnk.bad { background: var(--danger); }
+
+    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+    .step-box { padding: 22px 18px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.10); background: var(--surface);
+      min-height: 170px; display: flex; flex-direction: column; gap: 10px; opacity: 0.25;
+      transition: opacity 0.6s ease, border-color 0.5s ease, box-shadow 0.5s ease, transform 0.5s ease; }
+    .step-box.on { opacity: 1; transform: translateY(-4px); border-color: rgba(40,194,196,0.45); box-shadow: var(--shadow-glow); }
+    .step-box.warn.on { border-color: var(--warning); box-shadow: 0 0 0 4px rgba(246,193,119,0.12); }
+    .step-box .n { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--accent); }
+    .step-box h3 { font-size: 20px; }
+    .step-box p { font-size: 15px; }
+    @media (max-width: 1100px) { .flow { grid-template-columns: 1fr; } }
+
+    .limits { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 40px; }
+    .limits li { font-size: 15px; line-height: 1.35; color: var(--text-soft); padding-left: 16px; position: relative; }
+    .limits li::before { content: ""; position: absolute; left: 0; top: 0.5em; width: 6px; height: 6px; border-radius: 999px; background: var(--accent); }
+    .limits b { display: block; color: var(--text); font-weight: 600; font-size: 16px; }
+    .dense .slide-inner { gap: 14px; }
+    .dense .section-heading h2 { font-size: clamp(26px, 3vw, 40px); }
+    .heap-slide .heap-area { height: 290px; }
+    .bars { gap: 8px; }
+    .bar-row { font-size: 15px; }
+    .dense .note { padding: 12px 18px; font-size: 16px; }
+
+    /* ---------- Exportação para PDF: uma página de 1280×720 por slide ---------- */
+    @page { size: 1280px 720px; margin: 0; }
+    @media print {
+      html, body { background: #17161B; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .dot-nav { display: none; }
+      .slide { min-height: 720px; height: 720px; break-after: page; page-break-after: always; }
+      .slide-inner { min-height: 720px; height: 720px; padding: 48px 64px; gap: 22px; }
+      .animate { opacity: 1 !important; transform: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="dot-nav" aria-label="Navegação de slides"></nav>
+
+  <main class="presentation">
+
+    <!-- 01 · Título -->
+    <section class="slide title-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">01 / 16</div>
+        <div class="hero">
+          <div class="hero-badge animate delay-1">A3 · Filas de prioridade</div>
+          <div class="eyebrow animate delay-2">Programação de soluções computacionais · Python + Streamlit</div>
+          <h1 class="animate delay-3">SEÇÃO <span class="accent-text">8-BIT</span></h1>
+          <p class="subtitle animate delay-4">Simulador de filas de prioridade com justiça contra starvation, SLA e auditoria SQL.</p>
+        </div>
+        <div class="team animate delay-5" style="margin-top: 18px;">
+          <span><b>Luis Eduardo Barbosa de Menezes Junior</b> · RA 12723122413</span>
+          <span><b>Murilo Ribeiro de Lima</b> · RA 12723130019</span>
+          <span><b>Pedro Henrique Martins Mattos Paranhos Barreiros</b> · RA 1272319265</span>
+          <span><b>Ricardo Henrique da Rocha Silva</b> · RA 12723114666</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 · Declaração -->
+    <section class="slide quote-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">02 / 16</div>
+        <blockquote class="statement animate delay-1">
+          Uma seção eleitoral tem <span class="accent-text">uma única urna</span>. Prioridade diz quem vai primeiro, não quanto tempo a fila dura.
+        </blockquote>
+        <div class="mono animate delay-2" style="color: var(--text-soft); font-size: 13px;">Art. 129 · Res. TSE 23.751/2026</div>
+      </div>
+    </section>
+
+    <!-- 03 · Problema × pergunta -->
+    <section class="slide comparison-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">03 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Pitch do problema</div>
+          <h2 class="animate delay-2">Justiça na fila exige medir, explicar e auditar</h2>
+        </div>
+        <div class="comparison-grid">
+          <div class="comparison-col muted animate delay-1">
+            <h3>Riscos reais</h3>
+            <ul>
+              <li>Inanição (starvation) de quem não tem preferência</li>
+              <li>Descumprimento de prazos (SLA)</li>
+              <li>Ausência de rastreabilidade para auditorias</li>
+            </ul>
+          </div>
+          <div class="comparison-col accent animate delay-2">
+            <h3>Pergunta do projeto</h3>
+            <ul>
+              <li>Como garantir espera limitada sem violar a lei?</li>
+              <li>Como provar, registro a registro, a ordem de atendimento?</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 · Regras -->
+    <section class="slide grid-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">04 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Cenário e regras de negócio</div>
+          <h2 class="animate delay-2">Quatro níveis, uma chave de atendimento</h2>
+        </div>
+        <div class="grid cols-2" style="grid-template-columns: repeat(4, minmax(0, 1fr));">
+          <article class="card animate delay-1">
+            <div class="card-label">Nível 0</div>
+            <h3>Mais de 80 anos</h3>
+            <p>Comparação estrita: 80 anos exatos não tem "mais de 80". § 3º</p>
+          </article>
+          <article class="card animate delay-2">
+            <div class="card-label">Nível 1</div>
+            <h3>Preferencial</h3>
+            <p>60+, gestante, PcD, mobilidade reduzida. § 2º</p>
+          </article>
+          <article class="card animate delay-3">
+            <div class="card-label">Nível 2</div>
+            <h3>Doador de sangue</h3>
+            <p>Comprovante de até 120 dias. Vai após os preferenciais. § 5º</p>
+          </article>
+          <article class="card animate delay-4">
+            <div class="card-label">Nível 3</div>
+            <h3>Comum</h3>
+            <p>Ordem de chegada.</p>
+          </article>
+        </div>
+        <div class="note animate delay-5">Chave: (nível, instante de chegada, sequência). Desempate estável: quem chegou antes sai antes no mesmo nível.</div>
+      </div>
+    </section>
+
+    <!-- 05 · Heap -->
+    <section class="slide stats-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">05 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Estrutura de dados</div>
+          <h2 class="animate delay-2">Fila de prioridade como heap binária</h2>
+        </div>
+        <div class="grid stats-grid cols-3">
+          <div class="stat-card animate delay-1">
+            <div class="stat-label">Inserir e extrair</div>
+            <div class="stat-value">O(log n)</div>
+            <p>Sobe ou desce no máximo a altura da árvore.</p>
+          </div>
+          <div class="stat-card animate delay-2">
+            <div class="stat-label">Ver o próximo</div>
+            <div class="stat-value">O(1)</div>
+            <p>O menor fica sempre no índice 0.</p>
+          </div>
+          <div class="stat-card animate delay-3">
+            <div class="stat-label">Ordem completa</div>
+            <div class="stat-value">O(n log n)</div>
+            <p>Só para exibir na visão do algoritmo.</p>
+          </div>
+        </div>
+        <div class="notice animate delay-4"><b>Atenção:</b> o array da heap não é a ordem de atendimento. A heap só garante que cada pai tem chave ≤ que os filhos.</div>
+      </div>
+    </section>
+
+    <!-- 05b · Heap em ação (animada) -->
+    <section class="slide heap-slide dense">
+      <div class="slide-inner">
+        <div class="slide-counter">05 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Heap em ação</div>
+          <h2 class="animate delay-2">Inserir: a chave sobe até o lugar certo</h2>
+        </div>
+        <div class="heap-area" id="heap">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="50" y1="14" x2="27" y2="46" vector-effect="non-scaling-stroke"/>
+            <line x1="50" y1="14" x2="73" y2="46" vector-effect="non-scaling-stroke"/>
+            <line x1="27" y1="46" x2="14" y2="80" vector-effect="non-scaling-stroke"/>
+            <line x1="27" y1="46" x2="40" y2="80" vector-effect="non-scaling-stroke"/>
+            <line x1="73" y1="46" x2="60" y2="80" vector-effect="non-scaling-stroke"/>
+            <line x1="73" y1="46" x2="86" y2="80" vector-effect="non-scaling-stroke"/>
+          </svg>
+          <div class="hnode" data-node="A">12</div>
+          <div class="hnode" data-node="B">20</div>
+          <div class="hnode" data-node="C">30</div>
+          <div class="hnode" data-node="D">25</div>
+          <div class="hnode" data-node="E">40</div>
+          <div class="hnode" data-node="F">35</div>
+          <div class="hnode" data-node="G">5</div>
+        </div>
+        <div class="arr-seq" id="heap-arr"></div>
+        <div class="cap-seq" id="heap-cap"></div>
+      </div>
+    </section>
+
+    <!-- 06 · Arquitetura -->
+    <section class="slide diagram-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">06 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Arquitetura orientada a objetos</div>
+          <h2 class="animate delay-2">Camadas com dependência em um só sentido</h2>
+        </div>
+        <div class="diagram">
+          <div class="diagram-node animate delay-1">
+            <div class="card-label">ui</div>
+            <h3>Interface</h3>
+            <p>Streamlit: visões, sessão e cena Canvas (só apresentação).</p>
+          </div>
+          <div class="diagram-node animate delay-2">
+            <div class="card-label">application</div>
+            <h3>Motor</h3>
+            <p>Eventos, métricas, explicações e auditoria.</p>
+          </div>
+          <div class="diagram-node focus animate delay-3">
+            <div class="card-label">domain</div>
+            <h3>Regras</h3>
+            <p>Eleitor, FilaPrioridade (heap), políticas, seção e urna. Sem Streamlit nem SQL.</p>
+          </div>
+          <div class="diagram-node animate delay-4">
+            <div class="card-label">infrastructure</div>
+            <h3>Persistência</h3>
+            <p>SQLite, exportador de logs.sql.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 · Motor de eventos -->
+    <section class="slide comparison-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">07 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Motor de eventos discretos</div>
+          <h2 class="animate delay-2">Duas heaps, dois papéis</h2>
+        </div>
+        <div class="comparison-grid">
+          <div class="comparison-col accent animate delay-1">
+            <h3>Agenda de eventos</h3>
+            <ul>
+              <li>Ordena por (instante, tipo, seq)</li>
+              <li>Decide <b style="color: var(--text);">quando</b> algo acontece</li>
+              <li>Relógio só avança até o próximo evento</li>
+            </ul>
+          </div>
+          <div class="comparison-col accent animate delay-2">
+            <h3>Fila de prioridade</h3>
+            <ul>
+              <li>Ordena pessoas pela chave da política</li>
+              <li>Decide <b style="color: var(--text);">quem</b> é chamado</li>
+              <li>Sem preempção: quem vota não é interrompido</li>
+            </ul>
+          </div>
+        </div>
+        <div class="note animate delay-3">A velocidade da animação não altera o resultado: mesma seed, mesmo log (testado em 7 cenários).</div>
+      </div>
+    </section>
+
+    <!-- 07b · Retorno com documento (animada) -->
+    <section class="slide flow-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">08 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Retorno com documento · art. 131</div>
+          <h2 class="animate delay-2">Quem volta sem documento não perde a vez</h2>
+        </div>
+        <div class="flow" id="flow">
+          <div class="step-box"><div class="n">01</div><h3>Entra na fila</h3><p>Chave = (classe, chegada, seq).</p></div>
+          <div class="step-box warn"><div class="n">02</div><h3>Identificação</h3><p>Sem documento com foto aceito.</p></div>
+          <div class="step-box"><div class="n">03</div><h3>Fora da seção</h3><p>Busca o documento. Estado AUSENTE, 15 min (hipótese).</p></div>
+          <div class="step-box"><div class="n">04</div><h3>Volta</h3><p>Documento aceito. Reentra no fim do seu grupo.</p></div>
+          <div class="step-box"><div class="n">05</div><h3>Vota uma vez</h3><p>Uma saída da fila por atendimento.</p></div>
+        </div>
+        <div class="cap-seq" id="flow-cap"></div>
+      </div>
+    </section>
+
+    <!-- 08 · Justiça -->
+    <section class="slide feature-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">08 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Mecanismos de justiça</div>
+          <h2 class="animate delay-2">Mitigação contra starvation, com ressalva legal</h2>
+        </div>
+        <div class="grid cols-3">
+          <article class="card animate delay-1">
+            <div class="feature-tag">Oficial</div>
+            <h3>Regra eleitoral</h3>
+            <p>Chave (nível, chegada). Sem envelhecimento do ticket.</p>
+          </article>
+          <article class="card animate delay-2 card--accent">
+            <div class="feature-tag warn-text" style="color: var(--warning);">LAB · sem validade eleitoral</div>
+            <h3>Aging</h3>
+            <p>Quem espera ganha prioridade com o tempo (passo de 15 min).</p>
+          </article>
+          <article class="card animate delay-3 card--accent">
+            <div class="feature-tag" style="color: var(--warning);">LAB · sem validade eleitoral</div>
+            <h3>Cotas rotativas</h3>
+            <p>Após k preferenciais, uma vaga reservada para comuns (k = 3).</p>
+          </article>
+        </div>
+        <div class="notice animate delay-4"><b>Ressalva:</b> aging e cotas são hipóteses de laboratório para discutir o trade-off de justiça. Não são procedimento eleitoral.</div>
+      </div>
+    </section>
+
+    <!-- 09 · Resultados -->
+    <section class="slide table-slide dense">
+      <div class="slide-inner">
+        <div class="slide-counter">09 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Resultados · demo_7min, seed 2026</div>
+          <h2 class="animate delay-2">Mesma carga, políticas diferentes</h2>
+        </div>
+        <div class="table-wrap animate delay-2">
+          <table>
+            <thead>
+              <tr><th>Variante</th><th>Comum (máx)</th><th>Preferencial (máx)</th><th>Doador (máx)</th><th>80+ (máx)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Regras eleitorais</td><td class="num">≈ 109 min</td><td class="num">≈ 48 min</td><td class="num">≈ 99 min</td><td class="num">≈ 2 min</td></tr>
+              <tr><td>Regras + mitigação operacional</td><td class="num">≈ 99 min</td><td class="num">≈ 37 min</td><td class="num">≈ 88 min</td><td class="num">≈ 2 min</td></tr>
+              <tr class="lab"><td>Aging (15 min)</td><td class="num">≈ 85 min</td><td class="num">≈ 86 min</td><td class="num">≈ 66 min</td><td class="num">≈ 2 min</td></tr>
+              <tr class="lab"><td>Cotas (k = 3)</td><td class="num">≈ 104 min</td><td class="num">≈ 65 min</td><td class="num">≈ 117 min</td><td class="num">≈ 2 min</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bars" id="bars">
+          <div class="bar-row"><span>Regras eleitorais</span><div class="bar-track"><div class="bar-fill" data-w="91"></div></div><span class="bar-val">≈ 109 min</span></div>
+          <div class="bar-row"><span>Mitigação operacional</span><div class="bar-track"><div class="bar-fill" data-w="82"></div></div><span class="bar-val">≈ 99 min</span></div>
+          <div class="bar-row"><span>LAB: aging (15 min)</span><div class="bar-track"><div class="bar-fill lab" data-w="71"></div></div><span class="bar-val">≈ 85 min</span></div>
+          <div class="bar-row"><span>LAB: cotas (k = 3)</span><div class="bar-track"><div class="bar-fill lab" data-w="87"></div></div><span class="bar-val">≈ 104 min</span></div>
+        </div>
+        <div class="note animate delay-3">Leitura: o aging reduz a espera máxima dos comuns, mas piora os preferenciais (48 → 86 min). Cada política muda quem espera, não quantas pessoas são atendidas.</div>
+      </div>
+    </section>
+
+    <!-- 10 · SLA -->
+    <section class="slide comparison-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">10 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Métricas de SLA e qualidade</div>
+          <h2 class="animate delay-2">Espera real comparada com a janela tolerada</h2>
+        </div>
+        <div class="comparison-grid">
+          <div class="comparison-col muted animate delay-1">
+            <h3>Janelas toleradas</h3>
+            <ul>
+              <li>Preferenciais: 15 min</li>
+              <li>Comuns: 30 min</li>
+              <li>Metas são hipóteses do cenário, não normas</li>
+            </ul>
+          </div>
+          <div class="comparison-col accent animate delay-2">
+            <h3>Quem ainda espera conta</h3>
+            <ul>
+              <li>Espera de quem segue na fila entra nas métricas</li>
+              <li>Excluí-la esconderia o pior caso: o de starvation</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11 · Auditoria -->
+    <section class="slide feature-slide dense">
+      <div class="slide-inner">
+        <div class="slide-counter">11 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Auditoria em SQL</div>
+          <h2 class="animate delay-2">Registro na entrada e na saída da fila</h2>
+        </div>
+        <div class="grid cols-3">
+          <article class="card animate delay-1">
+            <div class="feature-tag">ENTRADA_FILA</div>
+            <h3>Quem entrou</h3>
+            <p>Classe, chave, posição efetiva e tamanho da fila.</p>
+          </article>
+          <article class="card animate delay-2">
+            <div class="feature-tag">SAIDA_FILA</div>
+            <h3>Quem foi chamado</h3>
+            <p>Chave, pessoas ultrapassadas e espera.</p>
+          </article>
+          <article class="card animate delay-3">
+            <div class="feature-tag">Hash encadeado</div>
+            <h3>Integridade</h3>
+            <p>Detecta alteração pontual. Não impede reescrita total por quem controla o banco.</p>
+          </article>
+        </div>
+        <div class="chain" id="chain">
+          <div class="blk"><b>#1 ENTRADA_FILA</b>hash 3f9a…</div><div class="lnk"></div>
+          <div class="blk"><b>#2 SAIDA_FILA</b>hash 9c2e…</div><div class="lnk"></div>
+          <div class="blk"><b>#3 ENTRADA_FILA</b>hash 77bd…</div><div class="lnk"></div>
+          <div class="blk"><b>#4 SAIDA_FILA</b>hash e41a…</div>
+        </div>
+        <div class="cap-seq" id="chain-cap" style="min-height: 40px; font-size: 17px;"></div>
+        <div class="note animate delay-4"><span class="mono" style="color: var(--accent);">sql/schema.sql</span> · <span class="mono" style="color: var(--accent);">sql/logs.sql</span> · transação com rollback: falha no meio do lote não deixa nada parcial.</div>
+      </div>
+    </section>
+
+    <!-- 12 · Demonstração -->
+    <section class="slide timeline-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">12 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Demonstração ao vivo · 7 min</div>
+          <h2 class="animate delay-2">Cliques de ⏭ Próxima chamada</h2>
+        </div>
+        <div class="timeline">
+          <div class="timeline-item animate delay-1"><div class="timeline-dot"></div><div class="timeline-copy"><div class="mono">1º clique</div><p>08:01: Ubiratã (E-0001) é chamado. Cada movimento é um evento do motor.</p></div></div>
+          <div class="timeline-item animate delay-2"><div class="timeline-dot"></div><div class="timeline-copy"><div class="mono">6º clique</div><p>08:16: grupo com 4 prioridades chega. O selo ▼ PRÓXIMO mostra quem será chamado.</p></div></div>
+          <div class="timeline-item animate delay-3"><div class="timeline-dot"></div><div class="timeline-copy"><div class="mono">9º clique</div><p>08:22: Iara (80+) PASSOU À FRENTE de todas as preferências (§ 3º).</p></div></div>
+          <div class="timeline-item animate delay-4"><div class="timeline-dot"></div><div class="timeline-copy"><div class="mono">12º clique</div><p>Xênia (mobilidade reduzida) passa uma doadora: preferência legal antes de doadores.</p></div></div>
+          <div class="timeline-item animate delay-5"><div class="timeline-dot"></div><div class="timeline-copy"><div class="mono">Extra · 15º</div><p>Falha de urna programada. Métricas mostram a indisponibilidade.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 13 · Qualidade -->
+    <section class="slide stats-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">13 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Qualidade e verificação</div>
+          <h2 class="animate delay-2">Suíte automatizada passando</h2>
+        </div>
+        <div class="grid stats-grid cols-3">
+          <div class="stat-card animate delay-1"><div class="stat-value">134</div><div class="stat-label">testes passando</div></div>
+          <div class="stat-card animate delay-2"><div class="stat-value">7</div><div class="stat-label">arquivos de teste</div></div>
+          <div class="stat-card animate delay-3"><div class="stat-value">0</div><div class="stat-label">falhas</div></div>
+        </div>
+        <div class="note animate delay-4">Invariantes: nenhum ID duplicado, entradas = saídas, urna exclusiva. Exportação → importação em banco vazio com equivalência linha a linha.</div>
+      </div>
+    </section>
+
+    <!-- 14 · Limitações -->
+    <section class="slide faq-slide dense">
+      <div class="slide-inner">
+        <div class="slide-counter">14 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Limitações e ressalvas</div>
+          <h2 class="animate delay-2">O que o trabalho não cobre</h2>
+        </div>
+        <ul class="limits">
+          <li><b>Dados e pessoas</b>Simulação acadêmica, sem vínculo com a Justiça Eleitoral. Dados fictícios.</li>
+          <li><b>Hipóteses</b>Durações, taxas, probabilidades e metas de SLA são hipóteses, não dados oficiais.</li>
+          <li><b>Aging e cotas</b>São hipóteses de laboratório, não procedimento eleitoral.</li>
+          <li><b>Retorno com documento</b>Prazo fixo de 15 min. A espera conta a partir do retorno.</li>
+          <li><b>Mesários e fiscais</b>Não votam na simulação (art. 129, § 1º).</li>
+          <li><b>Primeiro eleitor aguardando o segundo</b>Não modelado (art. 136).</li>
+          <li><b>Falha de urna e cédula</b>Falha de urna no meio do voto e votação por cédula não são modeladas (arts. 150 e seguintes).</li>
+          <li><b>Justificativa e Juízo</b>Justificativa eleitoral e decisão real do Juízo em impugnação não são modeladas.</li>
+          <li><b>Acompanhante</b>Recebe perfil neutro, sem condições próprias de prioridade.</li>
+          <li><b>Presidência ocupada</b>Ocorrências assumidas por um mesário, sem custo extra modelado.</li>
+          <li><b>Rastreamento</b>Mostra pontos instrumentados, não todas as linhas executadas.</li>
+          <li><b>Acessibilidade</b>Validação com leitor de tela (NVDA) ainda é manual.</li>
+          <li><b>Hash encadeado</b>Não impede reescrita total do histórico por quem controla o banco.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 15 · Arguição -->
+    <section class="slide grid-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">15 / 16</div>
+        <div class="section-heading">
+          <div class="eyebrow animate delay-1">Arguição individual · 10 min</div>
+          <h2 class="animate delay-2">Cada integrante defende a própria área</h2>
+        </div>
+        <div class="grid cols-3">
+          <article class="card animate delay-1"><div class="card-label">Área 1</div><h3>Regras e classificação</h3><p>domain/prioridade.py</p></article>
+          <article class="card animate delay-2"><div class="card-label">Área 2</div><h3>Heap e políticas</h3><p>domain/fila.py · politicas.py</p></article>
+          <article class="card animate delay-3"><div class="card-label">Área 3</div><h3>Motor de eventos</h3><p>application/motor.py · eventos.py</p></article>
+          <article class="card animate delay-4"><div class="card-label">Área 4</div><h3>Incidentes e invariantes</h3><p>secao.py · recursos.py</p></article>
+          <article class="card animate delay-5"><div class="card-label">Área 5</div><h3>Auditoria SQL</h3><p>infrastructure/ · schema.sql</p></article>
+          <article class="card animate delay-5"><div class="card-label">Área 6</div><h3>Interface e explicações</h3><p>ui/ · explicacao.py · cena.js</p></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 16 · Encerramento -->
+    <section class="slide closing-slide">
+      <div class="slide-inner">
+        <div class="slide-counter">16 / 16</div>
+        <div class="closing-content">
+          <div class="eyebrow animate delay-1">Obrigado</div>
+          <h2 class="animate delay-2">Perguntas?</h2>
+          <p class="subtitle animate delay-3">Repositório: github.com/Pedrssa/a3-simulador-filas-eleitorais</p>
+          <p class="subtitle animate delay-4 mono" style="font-size: 15px;">pip install -r requirements.txt · streamlit run app.py</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const dotsContainer = document.querySelector('.dot-nav');
+
+    function scrollToSlide(index) {
+      const clamped = Math.max(0, Math.min(index, slides.length - 1));
+      slides[clamped].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function buildDots() {
+      slides.forEach((slide, index) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('aria-label', `Ir para o slide ${index + 1}`);
+        btn.addEventListener('click', () => scrollToSlide(index));
+        dotsContainer.appendChild(btn);
+      });
+    }
+
+    function setActiveDot(index) {
+      dotsContainer.querySelectorAll('button').forEach((dot, i) => dot.classList.toggle('active', i === index));
+    }
+
+    const slideObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) setActiveDot(slides.indexOf(entry.target));
+      });
+    }, { threshold: 0.6 });
+
+    const animationObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          animationObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.2 });
+
+    function getCurrentSlideIndex() {
+      let closestIndex = 0;
+      let closestDistance = Infinity;
+      slides.forEach((slide, index) => {
+        const distance = Math.abs(slide.getBoundingClientRect().top);
+        if (distance < closestDistance) { closestDistance = distance; closestIndex = index; }
+      });
+      return closestIndex;
+    }
+
+    document.addEventListener('keydown', (event) => {
+      const current = getCurrentSlideIndex();
+      if (['ArrowDown', 'ArrowRight', 'PageDown'].includes(event.key)) { event.preventDefault(); scrollToSlide(current + 1); }
+      if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(event.key)) { event.preventDefault(); scrollToSlide(current - 1); }
+      if (event.key === 'Home') { event.preventDefault(); scrollToSlide(0); }
+      if (event.key === 'End') { event.preventDefault(); scrollToSlide(slides.length - 1); }
+    });
+
+
+    // ---------- Animações contextuais ----------
+    const SLOTS = [[50, 14], [27, 46], [73, 46], [14, 80], [40, 80], [60, 80], [86, 80]];
+    const players = [];
+
+    function player(root, stages, render, ms = 2000) {
+      let timers = [];
+      let k = -1;
+      let done = false;
+      const p = {
+        run() {
+          if (done) return;
+          p.stop();
+          k = -1;
+          const passo = () => {
+            k += 1;
+            render(stages[k], k);
+            if (k < stages.length - 1) timers.push(setTimeout(passo, ms));
+          };
+          timers.push(setTimeout(passo, 300));
+        },
+        stop() { timers.forEach(clearTimeout); timers = []; },
+        reset() { p.stop(); k = -1; render(null, -1); },
+        finish() { p.stop(); done = true; k = stages.length - 1; render(stages[k], k); },
+      };
+      players.push({ root, p });
+      return p;
+    }
+
+    // Heap: slot -> posição; cada etapa descreve quem está onde.
+    const HEAP = [
+      { pos: { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5 }, hl: [], arr: "12, 20, 30, 25, 40, 35, ·",
+        cap: "Heap inicial: o pai é menor ou igual aos filhos em todos os níveis." },
+      { pos: { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6 }, hl: ["G"], arr: "12, 20, 30, 25, 40, 35, 5",
+        cap: "Chega a chave 5: entra na primeira vaga livre, no fim da árvore." },
+      { pos: { A: 0, B: 1, C: 2, D: 3, E: 4, F: 5, G: 6 }, hl: ["C", "G"], arr: "12, 20, 30, 25, 40, 35, 5",
+        cap: "Compara com o pai (30). 5 < 30: o novo elemento precisa subir." },
+      { pos: { A: 0, B: 1, C: 6, D: 3, E: 4, F: 5, G: 2 }, hl: ["G"], arr: "12, 20, 5, 25, 40, 35, 30",
+        cap: "Troca: o 5 ocupa a posição do pai, e o 30 desce para o fim." },
+      { pos: { A: 0, B: 1, C: 6, D: 3, E: 4, F: 5, G: 2 }, hl: ["A", "G"], arr: "12, 20, 5, 25, 40, 35, 30",
+        cap: "Compara com a raiz (12). 5 < 12: sobe mais um nível." },
+      { pos: { A: 2, B: 1, C: 6, D: 3, E: 4, F: 5, G: 0 }, hl: ["G"], arr: "5, 20, 12, 25, 40, 35, 30",
+        cap: "Troca: o 5 vira a raiz e a propriedade de heap está restabelecida." },
+    ];
+    const heapEl = document.getElementById("heap");
+    const heapArr = document.getElementById("heap-arr");
+    const heapCap = document.getElementById("heap-cap");
+    function heapRender(st) {
+      const nodes = heapEl.querySelectorAll(".hnode");
+      if (!st) {
+        nodes.forEach((n) => n.classList.remove("on", "hl"));
+        heapArr.textContent = ""; heapCap.textContent = "";
+        return;
+      }
+      nodes.forEach((n) => {
+        const slot = st.pos[n.dataset.node];
+        if (slot === undefined) { n.classList.remove("on", "hl"); return; }
+        n.style.left = SLOTS[slot][0] + "%";
+        n.style.top = SLOTS[slot][1] + "%";
+        n.classList.add("on");
+        n.classList.toggle("hl", st.hl.includes(n.dataset.node));
+      });
+      heapArr.textContent = "[ " + st.arr + " ]";
+      heapCap.textContent = st.cap;
+    }
+    player(heapEl, HEAP, (st) => heapRender(st), 2300);
+
+    // Barras de espera: uma política por vez.
+    const barsEl = document.getElementById("bars");
+    player(barsEl, [0, 1, 2, 3], (st, k) => {
+      barsEl.querySelectorAll(".bar-fill").forEach((f, i) => {
+        f.style.width = k >= 0 && i <= k ? f.dataset.w + "%" : "0%";
+      });
+    }, 1400);
+
+    // Cadeia de hash: encadeamento, depois uma alteração quebra a cadeia.
+    const chainEl = document.getElementById("chain");
+    const chainCap = document.getElementById("chain-cap");
+    const CHAIN_CAP = [
+      "Cada registro guarda o hash do anterior.",
+      "Os registros formam uma cadeia, em ordem de sequência.",
+      "Alterar um registro muda o seu hash: a cadeia quebra a partir dele (vermelho).",
+    ];
+    player(chainEl, [0, 1, 2], (st, k) => {
+      const blocos = chainEl.querySelectorAll(".blk");
+      const links = chainEl.querySelectorAll(".lnk");
+      blocos.forEach((b, i) => { b.classList.toggle("on", k >= 0); b.classList.toggle("bad", k >= 2 && i >= 1); });
+      links.forEach((l, i) => { l.classList.toggle("on", k >= 1); l.classList.toggle("bad", k >= 2 && i >= 1); });
+      chainCap.textContent = k >= 0 ? CHAIN_CAP[k] : "";
+    }, 2200);
+
+    // Fluxo do retorno com documento.
+    const flowEl = document.getElementById("flow");
+    const flowCap = document.getElementById("flow-cap");
+    const FLOW_CAP = [
+      "A pessoa entra na fila com a chave da sua classe e da sua chegada.",
+      "Sem documento com foto aceito, a identificação não se conclui (art. 131).",
+      "Ela sai para buscar o documento. Fica fora da seção por um prazo fixo.",
+      "Volta com o documento e reentra no fim do seu grupo de prioridade.",
+      "É atendida uma vez: o retorno não repete o atendimento já feito.",
+    ];
+    player(flowEl, [0, 1, 2, 3, 4], (st, k) => {
+      flowEl.querySelectorAll(".step-box").forEach((b, i) => b.classList.toggle("on", i <= k));
+      flowCap.textContent = k >= 0 ? FLOW_CAP[k] : "";
+    }, 2200);
+
+    // Quando o slide entra na tela, a sequência começa; ao sair, reinicia (para reapresentar).
+    const animIO = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        const lista = players.filter((x) => en.target.contains(x.root));
+        if (en.isIntersecting) lista.forEach((x) => x.p.run());
+        else lista.forEach((x) => x.p.reset());
+      });
+    }, { threshold: 0.6 });
+
+    // Estado final de todas as animações (usado na exportação para PDF).
+    window.finalizarAnimacoes = () => players.forEach((x) => x.p.finish());
+
+    // Numeração automática (o deck pode crescer sem renumerar à mão).
+    slides.forEach((slide, i) => {
+      const c = slide.querySelector(".slide-counter");
+      if (c) c.textContent = String(i + 1).padStart(2, "0") + " / " + String(slides.length).padStart(2, "0");
+    });
+    slides.forEach((slide) => animIO.observe(slide));
+    players.forEach((x) => x.p.reset());
+
+    buildDots();
+    slides.forEach(slide => slideObserver.observe(slide));
+    document.querySelectorAll('.animate').forEach(el => animationObserver.observe(el));
+    setActiveDot(0);
+  </script>
+</body>
+</html>

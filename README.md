@@ -91,6 +91,7 @@ docs/                       relatório, regras, UML, dicionário, requisitos, te
 - [UML e dicionário de classes](docs/dicionario_e_uml.md)
 - [Testes e evidências](docs/testes.md)
 - [Roteiro da apresentação (20 min)](docs/roteiro_apresentacao.md)
+- [Slides da apresentação](docs/apresentacao_a3.html): versão animada (abra no navegador; setas ou clique nos pontos para navegar; as sequências de heap, retorno, barras e cadeia de hash rodam ao entrar no slide). [PDF estático](docs/apresentacao_a3.pdf) com o estado final de cada animação.
 - [Ferramentas usadas no desenvolvimento](docs/ferramentas.md)
 
 ## Versionamento
