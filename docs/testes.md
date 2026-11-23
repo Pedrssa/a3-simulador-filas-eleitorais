@@ -1,10 +1,10 @@
 # Testes e evidências
 
-Execução registrada em **27/10/2026** (última rodada após a revisão da cena e dos eventos) (Windows 11, Python 3.14.3, pytest 9.1.1, Streamlit 1.66.1):
+Execução registrada em **23/11/2026** (rodada de auditoria antes da entrega; Windows 11, Python 3.14.5, pytest 9.1.1, Streamlit 1.66.1, versões de `requirements-lock.txt`):
 
 ```
 > python -m pytest -q
-109 passed in 15.64s
+131 passed in 16.03s
 ```
 
 | Arquivo | Testes | O que cobre |
@@ -13,7 +13,7 @@ Execução registrada em **27/10/2026** (última rodada após a revisão da cena
 | `test_fila_politicas.py` | 9 | heap rejeita duplicado, array interno ≠ ordem efetiva, remoção mantém a propriedade de heap, ordem 80+ → preferencial → comum, desempate estável, política eleitoral nunca promove comum, aging (níveis, piso e **necessidade de reconstruir a heap**), cotas (vaga para comum sem furar quem tem mais de 80) |
 | `test_motor.py` | 55 | mesma seed → mesmo log (7 cenários); seed diferente → carga diferente; **velocidade da animação não altera o resultado** (4 tamanhos de passo); invariantes, urna exclusiva e nenhum ID duplicado (7 cenários × 3 políticas); não preempção; prioridade aplicada na admissão; falha de urna; boca de urna sem prisão automática e sem interromper a urna; encerramento com senhas; os 13 incidentes manuais; pausa e avanço unitário; métricas com quem ainda espera; comparação com a mesma carga (o aging reduz a espera máxima dos comuns em mais de 40%) |
 | `test_auditoria.py` | 7 | **rollback** diante de falha no meio do lote (estado do motor restaurado, nada parcial no banco, simulação continua íntegra depois), UNIQUE contra duplicação, exportação → importação em banco vazio com equivalência linha a linha, escaping de literais hostis, texto com aspas e quebras de linha, hash detecta alteração e remoção, logs sem dados de voto |
-| `test_coerencia.py` | 6 | a cada evento, a cena mostra a fila exatamente na ordem efetiva da heap e a cabine só com quem ocupa a urna; cada passo do rastreamento destaca a linha real `rastreador.ponto(`; todos os 8 pontos instrumentados são exercitados; as seleções no rastreamento batem com SAIDA_FILA da auditoria |
+| `test_coerencia.py` | 10 | a cada evento, a cena mostra a fila exatamente na ordem efetiva da heap e a cabine só com quem ocupa a urna; cada passo do rastreamento destaca a linha real `rastreador.ponto(`; todos os 8 pontos instrumentados são exercitados; as seleções no rastreamento batem com SAIDA_FILA da auditoria |
 | `test_interface.py` | 15 | (Streamlit AppTest) as quatro visões renderizam sem erro e com aviso acadêmico; trocar de visão preserva a simulação; **reruns não duplicam nem avançam eventos**; ⏭ Próxima chamada para logo após uma SAIDA_FILA; ⟳ Recomeçar demo carrega demo_7min/2026; laboratório da visão 1 usa a heap real; modo apresentação; avançar 1 evento processa exatamente um; iniciar e pausar; reiniciar; troca de política |
 | `test_explicacao.py` | 8 | a explicação da última chamada corresponde ao registro `SAIDA_FILA` (pessoa, chave, ultrapassados) nas 3 políticas; o próximo explicado é o 1º da projeção; ultrapassagem por 80+ cita o § 3º; fila vazia; laboratório FIFO × heap mantém a invariante e marca as posições alteradas |
 
@@ -87,5 +87,5 @@ A projeção considera o instante atual, sem novas chegadas nem avanço de tempo
 Não é uma promessa da ordem futura sob eventos que ainda não ocorreram.
 A revisão não incluiu nova validação visual em navegador.
 
-Resultado da suíte completa nesta revisão: **115 passed in 33.64s**.
+Resultado da suíte completa nesta auditoria: **131 passed in 16.03s** (27 + 9 + 55 + 7 + 10 + 15 + 8).
 Verificação de whitespace: `git diff --check` sem erros.
