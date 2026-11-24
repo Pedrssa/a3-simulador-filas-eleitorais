@@ -94,6 +94,16 @@ docs/                       relatório, regras, UML, dicionário, requisitos, te
 - [Slides da apresentação](docs/apresentacao_a3.html): versão animada (abra no navegador; setas ou clique nos pontos para navegar; as sequências de heap, retorno, barras e cadeia de hash rodam ao entrar no slide). [PDF estático](docs/apresentacao_a3.pdf) com o estado final de cada animação.
 - [Ferramentas usadas no desenvolvimento](docs/ferramentas.md)
 
+## Integrantes
+
+| Nome | RA |
+| --- | --- |
+| Brunno Otavyo de Jesus Aguiar | 12725192794 |
+| Luis Eduardo Barbosa de Menezes Junior | 12723122413 |
+| Murilo Ribeiro de Lima | 12723130019 |
+| Pedro Henrique Martins Mattos Paranhos Barreiros | 1272319265 |
+| Ricardo Henrique da Rocha Silva | 12723114666 |
+
 ## Versionamento
 
 O repositório está publicado no GitHub, na branch `main`, com histórico de commits.
